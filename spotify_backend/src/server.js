@@ -1,0 +1,42 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const connectDB = require('./config/db');
+
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const playlistRoutes = require('./routes/playlistRoutes');
+const saavnRoutes = require('./routes/saavnRoutes');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Basic protection against brute-force login/register attempts.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: 'Too many attempts, please try again later.' },
+});
+
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/playlists', playlistRoutes);
+app.use('/api/music', saavnRoutes);
+
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
+// Fallback error handler so unexpected errors don't crash the process
+// or leak stack traces to the client.
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: 'Internal server error' });
+});
+
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
+connectDB().then(() => {
+  app.listen(PORT, HOST, () => console.log(`Server running on http://${HOST}:${PORT}`));
+});
