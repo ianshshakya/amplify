@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 const saavnRoutes = require('./routes/saavnRoutes');
+const homeRoutes = require('./routes/homeRoutes');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/music', saavnRoutes);
+app.use('/api/home', homeRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

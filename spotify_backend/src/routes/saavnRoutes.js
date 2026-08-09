@@ -11,22 +11,24 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Missing search query' });
     }
 
-    const response = await saavn.search.searchAll(query);
-    // Note: saavnapi response structure returns data directly
-    const songs = response.songs?.results || [];
+    const response = await saavn.search.searchSongs({ query, page: 1, limit: 20 });
+    const songs = response.results || [];
 
     // Map JioSaavn results to our expected format
     const results = songs.map(song => {
       // Find highest quality image
-      const thumbnail = song.image.find(img => img.quality === '500x500')?.url 
-                     || song.image[song.image.length - 1]?.url;
+      const thumbnail = song.image?.find(img => img.quality === '500x500')?.url 
+                     || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '');
                      
+      // Get primary artist string
+      const artist = song.artists?.primary?.map(a => a.name).join(', ') || 'Unknown Artist';
+
       return {
-        videoId: song.id, // Using saavn ID instead of YouTube videoId
-        title: song.title,
-        artist: song.primaryArtists || 'Unknown Artist',
+        videoId: song.id,
+        title: song.name || song.title, // 'name' in searchSongs, 'title' in searchAll
+        artist: artist,
         thumbnailUrl: thumbnail,
-        duration: null, // saavn searchAll doesn't return duration, we get it later if needed
+        duration: song.duration,
       };
     });
 
