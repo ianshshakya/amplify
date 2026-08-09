@@ -97,7 +97,7 @@ router.get('/playlist/:id', async (req, res) => {
         ? thumbnails[thumbnails.length - 1].url 
         : '';
         
-      const artist = song.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
+      const artist = song.artist?.name || 'Unknown Artist';
 
       return {
         videoId: song.videoId,
@@ -108,8 +108,11 @@ router.get('/playlist/:id', async (req, res) => {
       };
     });
 
+    const firstThumbnail = results.length > 0 ? results[0].thumbnailUrl : '';
+
     res.json({
       ...playlist,
+      thumbnailUrl: firstThumbnail,
       songs: results
     });
   } catch (error) {

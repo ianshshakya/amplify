@@ -1,6 +1,5 @@
 const express = require('express');
 const YTMusic = require('ytmusic-api');
-const ytdl = require('@distube/ytdl-core');
 
 const router = express.Router();
 const ytmusic = new YTMusic();
@@ -32,7 +31,7 @@ router.get('/search', async (req, res) => {
         ? thumbnails[thumbnails.length - 1].url 
         : '';
         
-      const artist = song.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
+      const artist = song.artist?.name || 'Unknown Artist';
 
       return {
         videoId: song.videoId,
@@ -58,26 +57,25 @@ router.get('/stream/:songId', async (req, res) => {
       return res.status(400).json({ error: 'Missing songId' });
     }
 
-    // Extract direct audio stream URL using ytdl-core
+const youtubedl = require('youtube-dl-exec');
+
+    // Extract direct audio stream URL using youtube-dl-exec (yt-dlp)
     const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const info = await ytdl.getInfo(ytUrl);
+    const output = await youtubedl(ytUrl, {
+      dumpSingleJson: true,
+      format: 'bestaudio',
+      noCheckCertificates: true,
+      noWarnings: true,
+      addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
+    });
     
-    // Choose the best audio format
-    const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-    if (audioFormats.length === 0) {
+    if (!output || !output.url) {
       return res.status(404).json({ error: 'No audio streams found for this song' });
     }
-    
-    // Sort by highest bitrate
-    audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0));
-    const bestFormat = audioFormats[0];
-
-    // Get exact duration from ytdl info (in seconds)
-    const duration = parseInt(info.videoDetails.lengthSeconds || '0', 10);
 
     res.json({ 
-      streamUrl: bestFormat.url, 
-      duration: duration
+      streamUrl: output.url, 
+      duration: output.duration || 0
     });
   } catch (error) {
     console.error('Stream error:', error);
