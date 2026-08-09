@@ -4,6 +4,7 @@ import '../providers/playlist_provider.dart';
 import '../providers/player_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/mini_player.dart';
 
 /// Shows a single server-side playlist (created by the user) and its
 /// tracks. For "Liked Songs" use LikedSongsScreen instead — that's a
@@ -66,6 +67,7 @@ class PlaylistScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }

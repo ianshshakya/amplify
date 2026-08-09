@@ -3,6 +3,7 @@ import '../models/track.dart';
 import '../services/offline_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/mini_player.dart';
 
 class DownloadedSongsScreen extends StatefulWidget {
   const DownloadedSongsScreen({super.key});
@@ -56,6 +57,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
                     );
                   },
                 ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }

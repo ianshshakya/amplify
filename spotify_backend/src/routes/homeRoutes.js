@@ -35,13 +35,35 @@ const CURATED_PLAYLISTS = [
 ];
 
 // Returns the lightweight metadata for the home screen
-router.get('/', (req, res) => {
-  res.json(CURATED_PLAYLISTS.map(p => ({
-    id: p.id,
-    title: p.title,
-    thumbnailUrl: p.thumbnailUrl,
-    description: p.description
-  })));
+router.get('/', async (req, res) => {
+  try {
+    const promises = CURATED_PLAYLISTS.map(async (p) => {
+      let dynamicThumbnail = p.thumbnailUrl;
+      try {
+        const response = await saavn.search.searchSongs({ query: p.query, page: 1, limit: 1 });
+        if (response.results && response.results.length > 0) {
+          const song = response.results[0];
+          dynamicThumbnail = song.image?.find(img => img.quality === '500x500')?.url 
+                          || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : p.thumbnailUrl);
+        }
+      } catch (err) {
+        console.error(`Failed to fetch thumbnail for ${p.id}:`, err);
+      }
+
+      return {
+        id: p.id,
+        title: p.title,
+        thumbnailUrl: dynamicThumbnail,
+        description: p.description
+      };
+    });
+
+    const playlistsWithDynamicImages = await Promise.all(promises);
+    res.json(playlistsWithDynamicImages);
+  } catch (error) {
+    console.error('Error in home route:', error);
+    res.status(500).json({ error: 'Failed to fetch home metadata' });
+  }
 });
 
 // Returns the actual songs for a specific curated playlist

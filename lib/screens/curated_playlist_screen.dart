@@ -7,6 +7,7 @@ import '../services/offline_service.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/mini_player.dart';
 
 class CuratedPlaylistScreen extends StatefulWidget {
   final CuratedPlaylist playlist;
@@ -216,6 +217,7 @@ class _CuratedPlaylistScreenState extends State<CuratedPlaylistScreen> {
           );
         },
       ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }

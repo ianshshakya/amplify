@@ -4,6 +4,7 @@ import '../providers/playlist_provider.dart';
 import '../providers/player_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/mini_player.dart';
 
 class LikedSongsScreen extends StatelessWidget {
   const LikedSongsScreen({super.key});
@@ -55,6 +56,7 @@ class LikedSongsScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }
