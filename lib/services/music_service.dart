@@ -32,15 +32,26 @@ class MusicService {
   }
 
   /// Get the curated home feed
-  Future<List<HomeSection>> getHomeFeed() async {
+  Future<List<CuratedPlaylist>> getHomeFeed() async {
     try {
       final results = await _api.get('/home');
       if (results is! List) return [];
       
-      return results.map((section) => HomeSection.fromJson(section)).toList();
+      return results.map((section) => CuratedPlaylist.fromJson(section)).toList();
     } catch (e) {
       print('Failed to get home feed: $e');
       return [];
+    }
+  }
+
+  /// Get the full songs for a curated playlist
+  Future<CuratedPlaylistData?> getCuratedPlaylist(String id) async {
+    try {
+      final result = await _api.get('/home/playlist/$id');
+      return CuratedPlaylistData.fromJson(result);
+    } catch (e) {
+      print('Failed to get curated playlist $id: $e');
+      return null;
     }
   }
 

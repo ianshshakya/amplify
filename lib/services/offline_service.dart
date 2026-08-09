@@ -22,11 +22,11 @@ class OfflineService {
     return '${dir.path}/$videoId.json';
   }
 
-  /// Checks if a song is already downloaded to local storage.
+  /// Checks if a song is already downloaded to local storage (both audio and metadata).
   Future<bool> isSongDownloaded(String videoId) async {
-    final path = await _getLocalPath(videoId);
-    final file = File(path);
-    return await file.exists();
+    final audioPath = await _getLocalPath(videoId);
+    final metaPath = await _getMetadataPath(videoId);
+    return await File(audioPath).exists() && await File(metaPath).exists();
   }
 
   /// Gets the file URI for a downloaded song.

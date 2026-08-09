@@ -3,48 +3,79 @@ const saavn = require('saavnapi').default;
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+const CURATED_PLAYLISTS = [
+  { 
+    id: 'top50india', 
+    title: 'Top 50 India', 
+    query: 'Top 50 India',
+    thumbnailUrl: 'https://c.saavncdn.com/327/Top-50-Musica-de-Meditacion-y-Relajacion-50-Musicas-Relajantes-para-Descansar-Dormir-y-So-ar-English-2017-500x500.jpg',
+    description: 'The most played tracks in India right now.'
+  },
+  { 
+    id: 'bollywoodhits', 
+    title: 'Bollywood Chartbusters', 
+    query: 'Bollywood Hits',
+    thumbnailUrl: 'https://c.saavncdn.com/editorial/BollywoodChartbusters_20231011053154_500x500.jpg',
+    description: 'Biggest Bollywood hits of the season.'
+  },
+  { 
+    id: 'arijitsingh', 
+    title: 'Best of Arijit Singh', 
+    query: 'Arijit Singh',
+    thumbnailUrl: 'https://c.saavncdn.com/editorial/ArijitSingh_20231011053154_500x500.jpg',
+    description: 'Soulful melodies by the one and only Arijit Singh.'
+  },
+  { 
+    id: 'punjabihits', 
+    title: 'Trending Punjabi Hits', 
+    query: 'Punjabi Hits',
+    thumbnailUrl: 'https://c.saavncdn.com/editorial/PunjabiChartbusters_20231011053154_500x500.jpg',
+    description: 'High energy Punjabi bangers.'
+  }
+];
+
+// Returns the lightweight metadata for the home screen
+router.get('/', (req, res) => {
+  res.json(CURATED_PLAYLISTS.map(p => ({
+    id: p.id,
+    title: p.title,
+    thumbnailUrl: p.thumbnailUrl,
+    description: p.description
+  })));
+});
+
+// Returns the actual songs for a specific curated playlist
+router.get('/playlist/:id', async (req, res) => {
   try {
-    // Define the curated categories
-    const categories = [
-      { title: 'Top 50 India', query: 'Top 50 India' },
-      { title: 'Bollywood Chartbusters', query: 'Bollywood Hits' },
-      { title: 'Best of Arijit Singh', query: 'Arijit Singh' },
-      { title: 'Trending Punjabi Hits', query: 'Punjabi Hits' }
-    ];
+    const playlist = CURATED_PLAYLISTS.find(p => p.id === req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ error: 'Playlist not found' });
+    }
 
-    // Fetch all categories in parallel
-    const promises = categories.map(async (cat) => {
-      const response = await saavn.search.searchSongs({ query: cat.query, page: 1, limit: 10 });
-      const songs = response.results || [];
+    const response = await saavn.search.searchSongs({ query: playlist.query, page: 1, limit: 30 });
+    const songs = response.results || [];
 
-      // Map JioSaavn results to our expected format
-      const results = songs.map(song => {
-        const thumbnail = song.image?.find(img => img.quality === '500x500')?.url 
-                       || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '');
-        const artist = song.artists?.primary?.map(a => a.name).join(', ') || 'Unknown Artist';
-
-        return {
-          videoId: song.id,
-          title: song.name || song.title,
-          artist: artist,
-          thumbnailUrl: thumbnail,
-          duration: song.duration,
-        };
-      });
+    const results = songs.map(song => {
+      const thumbnail = song.image?.find(img => img.quality === '500x500')?.url 
+                     || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '');
+      const artist = song.artists?.primary?.map(a => a.name).join(', ') || 'Unknown Artist';
 
       return {
-        title: cat.title,
-        songs: results
+        videoId: song.id,
+        title: song.name || song.title,
+        artist: artist,
+        thumbnailUrl: thumbnail,
+        duration: song.duration,
       };
     });
 
-    const homeFeed = await Promise.all(promises);
-
-    res.json(homeFeed);
+    res.json({
+      ...playlist,
+      songs: results
+    });
   } catch (error) {
-    console.error('Error fetching home feed:', error);
-    res.status(500).json({ error: 'Failed to fetch home feed' });
+    console.error('Error fetching curated playlist:', error);
+    res.status(500).json({ error: 'Failed to fetch curated playlist' });
   }
 });
 

@@ -39,15 +39,46 @@ class Track {
   int get hashCode => videoId.hashCode;
 }
 
-class HomeSection {
+class CuratedPlaylist {
+  final String id;
   final String title;
+  final String thumbnailUrl;
+  final String description;
+
+  CuratedPlaylist({
+    required this.id,
+    required this.title,
+    required this.thumbnailUrl,
+    required this.description,
+  });
+
+  factory CuratedPlaylist.fromJson(Map<String, dynamic> json) {
+    return CuratedPlaylist(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      thumbnailUrl: json['thumbnailUrl'] as String,
+      description: json['description'] as String,
+    );
+  }
+}
+
+class CuratedPlaylistData extends CuratedPlaylist {
   final List<Track> songs;
 
-  HomeSection({required this.title, required this.songs});
+  CuratedPlaylistData({
+    required super.id,
+    required super.title,
+    required super.thumbnailUrl,
+    required super.description,
+    required this.songs,
+  });
 
-  factory HomeSection.fromJson(Map<String, dynamic> json) {
-    return HomeSection(
+  factory CuratedPlaylistData.fromJson(Map<String, dynamic> json) {
+    return CuratedPlaylistData(
+      id: json['id'] as String,
       title: json['title'] as String,
+      thumbnailUrl: json['thumbnailUrl'] as String,
+      description: json['description'] as String,
       songs: (json['songs'] as List).map((t) => Track(
         videoId: t['videoId'] as String,
         title: t['title'] as String,

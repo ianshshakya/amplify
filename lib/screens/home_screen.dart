@@ -3,12 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/app_theme.dart';
-import '../providers/player_provider.dart';
-import '../services/user_data_service.dart';
 import '../services/music_service.dart';
 import '../models/track.dart';
 import 'liked_songs_screen.dart';
 import 'playlist_screen.dart';
+import 'curated_playlist_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<List<HomeSection>> _homeFeedFuture;
+  late Future<List<CuratedPlaylist>> _homeFeedFuture;
 
   @override
   void initState() {
@@ -37,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : 'Good evening';
 
     return SafeArea(
-      child: FutureBuilder<List<HomeSection>>(
+      child: FutureBuilder<List<CuratedPlaylist>>(
         future: _homeFeedFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -87,6 +86,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Curated For You', style: Theme.of(context).textTheme.titleMedium),
+              ),
+              const SizedBox(height: 16),
               if (sections.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
@@ -95,30 +99,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
-              for (final section in sections)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 180,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: section.songs.length,
-                        itemBuilder: (context, index) {
-                          final track = section.songs[index];
-                          return _TrackCard(track: track, contextList: section.songs);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.75, // Adjust for image + text
+                  ),
+                  itemCount: sections.length,
+                  itemBuilder: (context, index) {
+                    final playlist = sections[index];
+                    return _PlaylistCard(playlist: playlist);
+                  },
                 ),
+              ),
             ],
           );
         },
@@ -127,50 +125,51 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _TrackCard extends StatelessWidget {
-  final Track track;
-  final List<Track> contextList;
+class _PlaylistCard extends StatelessWidget {
+  final CuratedPlaylist playlist;
 
-  const _TrackCard({required this.track, required this.contextList});
+  const _PlaylistCard({required this.playlist});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.read<PlayerProvider>().playTrack(track, context: contextList),
-      child: Container(
-        width: 130,
-        margin: const EdgeInsets.only(right: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: CachedNetworkImage(
-                  imageUrl: track.thumbnailUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(color: AppColors.surfaceHighlight),
-                  errorWidget: (context, url, error) => Container(color: AppColors.surfaceHighlight),
-                ),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CuratedPlaylistScreen(playlist: playlist),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: CachedNetworkImage(
+                imageUrl: playlist.thumbnailUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: AppColors.surfaceHighlight),
+                errorWidget: (context, url, error) => Container(color: AppColors.surfaceHighlight),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              track.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              track.artist,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            playlist.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            playlist.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
