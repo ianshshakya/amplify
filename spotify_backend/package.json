@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -17,7 +18,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.5.0",
     "mongoose": "^8.5.2",
-    "saavnapi": "^1.0.1"
+    "ytmusic-api": "^5.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

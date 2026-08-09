@@ -7,7 +7,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
-const saavnRoutes = require('./routes/saavnRoutes');
+const musicRoutes = require('./routes/musicRoutes');
 const homeRoutes = require('./routes/homeRoutes');
 
 const app = express();
@@ -25,7 +25,7 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/playlists', playlistRoutes);
-app.use('/api/music', saavnRoutes);
+app.use('/api/music', musicRoutes);
 app.use('/api/home', homeRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

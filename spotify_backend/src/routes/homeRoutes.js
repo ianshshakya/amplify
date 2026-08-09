@@ -1,50 +1,64 @@
 const express = require('express');
-const saavn = require('saavnapi').default;
+const YTMusic = require('ytmusic-api');
 
 const router = express.Router();
+const ytmusic = new YTMusic();
+let ytmusicInitialized = false;
 
+// Initialize YTMusic
+async function initYTMusic() {
+  if (!ytmusicInitialized) {
+    await ytmusic.initialize();
+    ytmusicInitialized = true;
+  }
+}
+
+// Define Curated Playlists (We will search for these on YT Music)
 const CURATED_PLAYLISTS = [
   { 
     id: 'top50india', 
     title: 'Top 50 India', 
     query: 'Top 50 India',
-    thumbnailUrl: 'https://c.saavncdn.com/327/Top-50-Musica-de-Meditacion-y-Relajacion-50-Musicas-Relajantes-para-Descansar-Dormir-y-So-ar-English-2017-500x500.jpg',
     description: 'The most played tracks in India right now.'
   },
   { 
     id: 'bollywoodhits', 
     title: 'Bollywood Chartbusters', 
     query: 'Bollywood Hits',
-    thumbnailUrl: 'https://c.saavncdn.com/editorial/BollywoodChartbusters_20231011053154_500x500.jpg',
     description: 'Biggest Bollywood hits of the season.'
   },
   { 
     id: 'arijitsingh', 
     title: 'Best of Arijit Singh', 
     query: 'Arijit Singh',
-    thumbnailUrl: 'https://c.saavncdn.com/editorial/ArijitSingh_20231011053154_500x500.jpg',
     description: 'Soulful melodies by the one and only Arijit Singh.'
   },
   { 
     id: 'punjabihits', 
     title: 'Trending Punjabi Hits', 
     query: 'Punjabi Hits',
-    thumbnailUrl: 'https://c.saavncdn.com/editorial/PunjabiChartbusters_20231011053154_500x500.jpg',
     description: 'High energy Punjabi bangers.'
+  },
+  {
+    id: 'globaltop50',
+    title: 'Global Top 50',
+    query: 'Global Top 50 Songs',
+    description: 'The most played tracks in the world right now.'
   }
 ];
 
 // Returns the lightweight metadata for the home screen
 router.get('/', async (req, res) => {
   try {
+    await initYTMusic();
     const promises = CURATED_PLAYLISTS.map(async (p) => {
-      let dynamicThumbnail = p.thumbnailUrl;
+      let dynamicThumbnail = '';
       try {
-        const response = await saavn.search.searchSongs({ query: p.query, page: 1, limit: 1 });
-        if (response.results && response.results.length > 0) {
-          const song = response.results[0];
-          dynamicThumbnail = song.image?.find(img => img.quality === '500x500')?.url 
-                          || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : p.thumbnailUrl);
+        // Fetch one song just to get a good cover art for the category
+        const response = await ytmusic.searchSongs(p.query);
+        if (response && response.length > 0) {
+          const thumbnails = response[0].thumbnails || [];
+          dynamicThumbnail = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
         }
       } catch (err) {
         console.error(`Failed to fetch thumbnail for ${p.id}:`, err);
@@ -74,19 +88,22 @@ router.get('/playlist/:id', async (req, res) => {
       return res.status(404).json({ error: 'Playlist not found' });
     }
 
-    const response = await saavn.search.searchSongs({ query: playlist.query, page: 1, limit: 30 });
-    const songs = response.results || [];
+    await initYTMusic();
+    const searchResults = await ytmusic.searchSongs(playlist.query);
 
-    const results = songs.map(song => {
-      const thumbnail = song.image?.find(img => img.quality === '500x500')?.url 
-                     || (song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '');
-      const artist = song.artists?.primary?.map(a => a.name).join(', ') || 'Unknown Artist';
+    const results = searchResults.map(song => {
+      const thumbnails = song.thumbnails || [];
+      const bestThumbnail = thumbnails.length > 0 
+        ? thumbnails[thumbnails.length - 1].url 
+        : '';
+        
+      const artist = song.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
 
       return {
-        videoId: song.id,
-        title: song.name || song.title,
+        videoId: song.videoId,
+        title: song.name,
         artist: artist,
-        thumbnailUrl: thumbnail,
+        thumbnailUrl: bestThumbnail,
         duration: song.duration,
       };
     });
