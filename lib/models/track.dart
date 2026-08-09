@@ -38,3 +38,23 @@ class Track {
   @override
   int get hashCode => videoId.hashCode;
 }
+
+class HomeSection {
+  final String title;
+  final List<Track> songs;
+
+  HomeSection({required this.title, required this.songs});
+
+  factory HomeSection.fromJson(Map<String, dynamic> json) {
+    return HomeSection(
+      title: json['title'] as String,
+      songs: (json['songs'] as List).map((t) => Track(
+        videoId: t['videoId'] as String,
+        title: t['title'] as String,
+        artist: t['artist'] as String,
+        thumbnailUrl: t['thumbnailUrl'] as String,
+        duration: const Duration(seconds: 180),
+      )).toList(),
+    );
+  }
+}

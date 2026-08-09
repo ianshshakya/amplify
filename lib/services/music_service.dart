@@ -31,6 +31,19 @@ class MusicService {
     }
   }
 
+  /// Get the curated home feed
+  Future<List<HomeSection>> getHomeFeed() async {
+    try {
+      final results = await _api.get('/home');
+      if (results is! List) return [];
+      
+      return results.map((section) => HomeSection.fromJson(section)).toList();
+    } catch (e) {
+      print('Failed to get home feed: $e');
+      return [];
+    }
+  }
+
   /// Get the direct audio stream URL from our JioSaavn backend proxy
   Future<String> getAudioStreamUrl(String videoId) async {
     try {

@@ -5,8 +5,6 @@ import '../models/track.dart';
 import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/music_service.dart';
-import '../services/offline_service.dart';
 
 class TrackTile extends StatelessWidget {
   final Track track;
@@ -24,28 +22,6 @@ class TrackTile extends StatelessWidget {
     final minutes = d.inMinutes.remainder(60);
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
-  }
-
-  Future<void> _downloadSong(BuildContext context) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Starting download for ${track.title}...')),
-    );
-    try {
-      final musicService = MusicService();
-      final streamUrl = await musicService.getAudioStreamUrl(track.videoId);
-      await OfflineService().downloadSong(track.videoId, streamUrl);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${track.title} downloaded successfully!')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e')),
-        );
-      }
-    }
   }
 
   @override
@@ -101,10 +77,6 @@ class TrackTile extends StatelessWidget {
           Text(
             _formatDuration(track.duration),
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
-          IconButton(
-            icon: const Icon(Icons.download, color: AppColors.textSecondary, size: 20),
-            onPressed: () => _downloadSong(context),
           ),
           IconButton(
             icon: Icon(

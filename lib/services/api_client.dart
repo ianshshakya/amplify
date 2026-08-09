@@ -23,7 +23,7 @@ class ApiException implements Exception {
 /// - Physical device: use your machine's LAN IP, e.g. http://192.168.1.5:5000
 /// - Deployed backend (Render/Railway): use that public URL instead
 class ApiClient {
-  static const String baseUrl = 'http://10.77.236.84:5000/api';
+  static const String baseUrl = 'https://amplify-ycmb.onrender.com/api';
 
   final TokenStorage _tokenStorage = TokenStorage();
 

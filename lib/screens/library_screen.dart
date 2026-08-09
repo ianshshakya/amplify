@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'liked_songs_screen.dart';
 import 'playlist_screen.dart';
+import 'downloaded_songs_screen.dart';
 import 'auth_gate.dart';
 
 class LibraryScreen extends StatelessWidget {
@@ -115,6 +116,25 @@ class LibraryScreen extends StatelessWidget {
                         ),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const LikedSongsScreen()),
+                        ),
+                      ),
+                      ListTile(
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade700,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.download, color: Colors.white),
+                        ),
+                        title: const Text('My Downloads'),
+                        subtitle: const Text(
+                          'Play your music offline',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DownloadedSongsScreen()),
                         ),
                       ),
                       for (final playlist in playlists)

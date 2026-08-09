@@ -3,6 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart' as player_provider;
 import '../providers/playlist_provider.dart';
+import '../services/music_service.dart';
+import '../services/offline_service.dart';
 import '../theme/app_theme.dart';
 
 class PlayerScreen extends StatelessWidget {
@@ -71,6 +73,68 @@ class PlayerScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download, color: AppColors.textSecondary),
+                  onPressed: () async {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Starting download for ${track.title}...')),
+                    );
+                    try {
+                      final musicService = MusicService();
+                      final streamUrl = await musicService.getAudioStreamUrl(track.videoId);
+                      await OfflineService().downloadSong(track, streamUrl);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${track.title} downloaded successfully!')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Download failed: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.playlist_add, color: AppColors.textSecondary),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.surfaceHighlight,
+                        title: const Text('Add to Playlist'),
+                        content: SizedBox(
+                          width: double.maxFinite,
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: playlists.playlists.length,
+                            itemBuilder: (context, i) {
+                              final p = playlists.playlists[i];
+                              return ListTile(
+                                title: Text(p.name),
+                                onTap: () {
+                                  playlists.addTrackToPlaylist(p.id, track);
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Added to ${p.name}')),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 IconButton(
                   icon: Icon(

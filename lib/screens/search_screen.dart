@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/track.dart';
 import '../services/music_service.dart';
 import '../theme/app_theme.dart';
@@ -18,16 +19,50 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounce;
 
   List<Track> _results = [];
+  List<String> _recentSearches = [];
   bool _isLoading = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentSearches();
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _recentSearches = prefs.getStringList('recent_searches') ?? [];
+    });
+  }
+
+  Future<void> _saveRecentSearch(String query) async {
+    if (query.trim().isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final searches = prefs.getStringList('recent_searches') ?? [];
+    
+    // Remove if exists to put it at the top
+    searches.remove(query);
+    searches.insert(0, query);
+    
+    // Keep only last 10
+    if (searches.length > 10) {
+      searches.removeLast();
+    }
+    
+    await prefs.setStringList('recent_searches', searches);
+    setState(() {
+      _recentSearches = searches;
+    });
+  }
+
   void _onQueryChanged(String query) {
-    // Debounce so we don't hit the YouTube search on every keystroke —
-    // saves quota and avoids janky rapid-fire requests.
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       _runSearch(query);
     });
+    // Trigger rebuild to show/hide recent searches
+    setState(() {});
   }
 
   Future<void> _runSearch(String query) async {
@@ -44,6 +79,12 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       final results = await _musicService.search(query);
       if (!mounted) return;
+      
+      // Save search if we got results
+      if (results.isNotEmpty) {
+        _saveRecentSearch(query.trim());
+      }
+      
       setState(() {
         _results = results;
         _isLoading = false;
@@ -75,10 +116,10 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _controller,
               onChanged: _onQueryChanged,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Songs, artists...',
-                hintStyle: const TextStyle(color: AppColors.textSecondary),
+                hintStyle: const TextStyle(color: Colors.black54),
                 prefixIcon: const Icon(Icons.search, color: Colors.black87),
                 filled: true,
                 fillColor: Colors.white,
@@ -86,6 +127,15 @@ class _SearchScreenState extends State<SearchScreen> {
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide.none,
                 ),
+                suffixIcon: _controller.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.black54),
+                        onPressed: () {
+                          _controller.clear();
+                          _onQueryChanged('');
+                        },
+                      )
+                    : null,
               ),
             ),
           ),
@@ -96,6 +146,32 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildBody() {
+    if (_controller.text.trim().isEmpty) {
+      if (_recentSearches.isEmpty) {
+        return const Center(
+          child: Text(
+            'Search for your favorite songs',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        );
+      } else {
+        return ListView.builder(
+          itemCount: _recentSearches.length,
+          itemBuilder: (context, index) {
+            final query = _recentSearches[index];
+            return ListTile(
+              leading: const Icon(Icons.history, color: AppColors.textSecondary),
+              title: Text(query, style: const TextStyle(color: AppColors.textPrimary)),
+              onTap: () {
+                _controller.text = query;
+                _runSearch(query);
+              },
+            );
+          },
+        );
+      }
+    }
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
@@ -107,7 +183,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_results.isEmpty) {
       return const Center(
         child: Text(
-          'Search for your favorite songs',
+          'No results found',
           style: TextStyle(color: AppColors.textSecondary),
         ),
       );
