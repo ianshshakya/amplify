@@ -1,6 +1,6 @@
 const express = require('express');
 const YTMusic = require('ytmusic-api');
-const youtubedl = require('youtube-dl-exec');
+const playdl = require('play-dl');
 
 const router = express.Router();
 const ytmusic = new YTMusic();
@@ -105,13 +105,7 @@ router.get('/stream/:songId', async (req, res) => {
     let attempts = 0;
     while (attempts < 2 && !streamUrl) {
       try {
-        const info = await youtubedl(videoUrl, {
-          dumpSingleJson: true,
-          noWarnings: true,
-          noCheckCertificate: true,
-          youtubeSkipDashManifest: true,
-          format: 'bestaudio'
-        });
+        const info = await playdl.stream(videoUrl);
         streamUrl = info.url;
       } catch (err) {
         attempts++;
