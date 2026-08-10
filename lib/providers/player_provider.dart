@@ -102,6 +102,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (track == null) return;
 
     state = state.copyWith(isLoading: true, currentTrack: track);
+    await _audioPlayer.stop(); // Stop previous song to prevent playing old audio if new fetch fails
 
     try {
       final offlineService = OfflineService();
