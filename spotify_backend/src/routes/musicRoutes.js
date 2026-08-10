@@ -3,6 +3,43 @@ const saavn = require('saavnapi').default;
 
 const router = express.Router();
 
+// Helper: map a full song object (from getSongByIds) to our Track format
+function songToTrack(song) {
+  const thumbnail =
+    (song.image || []).find(img => img.quality === '500x500')?.url ||
+    (song.image || []).slice(-1)[0]?.url ||
+    '';
+
+  const artist =
+    (song.artists?.primary || []).map(a => a.name).join(', ') ||
+    song.primaryArtists ||
+    'Unknown Artist';
+
+  return {
+    videoId: song.id,
+    title: song.name || song.title || 'Unknown',
+    artist,
+    thumbnailUrl: thumbnail,
+    duration: typeof song.duration === 'number' ? song.duration : null,
+  };
+}
+
+// Helper: map a search result (from searchAll.songs.results) to our Track format
+function searchResultToTrack(song) {
+  const thumbnail =
+    (song.image || []).find(img => img.quality === '500x500')?.url ||
+    (song.image || []).slice(-1)[0]?.url ||
+    '';
+
+  return {
+    videoId: song.id,
+    title: song.title || song.name || 'Unknown',
+    artist: song.primaryArtists || 'Unknown Artist',
+    thumbnailUrl: thumbnail,
+    duration: null,
+  };
+}
+
 // 1. Search using JioSaavn
 router.get('/search', async (req, res) => {
   try {
@@ -11,23 +48,12 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Missing search query' });
     }
 
+    // searchAll returns: { topQuery, songs, albums, artists, playlists }
+    // (no .data wrapper — the object IS the data)
     const response = await saavn.search.searchAll({ query });
-    const songs = response.data?.songs?.results || [];
+    const songs = response?.songs?.results || [];
 
-    const results = songs.map(song => {
-      // Find highest quality image
-      const thumbnail = song.image.find(img => img.quality === '500x500')?.url 
-                     || song.image[song.image.length - 1]?.url;
-                     
-      return {
-        videoId: song.id,
-        title: song.title,
-        artist: song.primaryArtists || 'Unknown Artist',
-        thumbnailUrl: thumbnail,
-        duration: null,
-      };
-    });
-
+    const results = songs.map(searchResultToTrack);
     res.json(results);
   } catch (error) {
     console.error('Search error:', error);
@@ -43,22 +69,24 @@ router.get('/stream/:songId', async (req, res) => {
       return res.status(400).json({ error: 'Missing songId' });
     }
 
-    const response = await saavn.songs.getSongByIds({ songIds: [songId] });
-    const song = response.data[0];
+    // getSongByIds returns an array directly (no .data wrapper)
+    const songArray = await saavn.songs.getSongByIds({ songIds: [songId] });
+    const song = Array.isArray(songArray) ? songArray[0] : null;
 
-    if (!song || !song.downloadUrl) {
+    if (!song || !song.downloadUrl || song.downloadUrl.length === 0) {
       return res.status(404).json({ error: 'Song not found or no download URL available' });
     }
 
-    // Find the 320kbps quality, fallback to 160kbps, then whatever is available
     const urlList = song.downloadUrl;
-    const bestUrl = urlList.find(u => u.quality === '320kbps')?.url 
-                 || urlList.find(u => u.quality === '160kbps')?.url
-                 || urlList[urlList.length - 1]?.url;
+    const bestUrl =
+      urlList.find(u => u.quality === '320kbps')?.url ||
+      urlList.find(u => u.quality === '160kbps')?.url ||
+      urlList.find(u => u.quality === '96kbps')?.url ||
+      urlList[urlList.length - 1]?.url;
 
-    res.json({ 
-      streamUrl: bestUrl, 
-      duration: parseInt(song.duration || '0', 10)
+    res.json({
+      streamUrl: bestUrl,
+      duration: typeof song.duration === 'number' ? song.duration : 0,
     });
   } catch (error) {
     console.error('Stream error:', error);
