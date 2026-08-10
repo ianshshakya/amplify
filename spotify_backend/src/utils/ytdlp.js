@@ -2,16 +2,28 @@ const fs = require('fs');
 const path = require('path');
 const { execSync, exec } = require('child_process');
 
-const exePath = path.join(__dirname, '..', '..', 'yt-dlp.exe');
+const isWin = process.platform === 'win32';
+const isMac = process.platform === 'darwin';
+const exeName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+const exePath = path.join(__dirname, '..', '..', exeName);
 
 async function downloadYtDlp() {
   if (fs.existsSync(exePath)) return;
-  console.log('⏳ Downloading latest yt-dlp.exe...');
-  const res = await fetch('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe');
+  console.log(`⏳ Downloading latest yt-dlp for ${process.platform}...`);
+  
+  let downloadName = 'yt-dlp_linux';
+  if (isWin) downloadName = 'yt-dlp.exe';
+  if (isMac) downloadName = 'yt-dlp_macos';
+
+  const res = await fetch(`https://github.com/yt-dlp/yt-dlp/releases/latest/download/${downloadName}`);
   if (!res.ok) throw new Error(`Failed to download yt-dlp: ${res.statusText}`);
   const buffer = await res.arrayBuffer();
   fs.writeFileSync(exePath, Buffer.from(buffer));
-  console.log('✅ yt-dlp downloaded!');
+  
+  if (!isWin) {
+    fs.chmodSync(exePath, 0o755); // Make it executable on Linux/Mac
+  }
+  console.log('✅ yt-dlp downloaded and ready!');
 }
 
 /**
