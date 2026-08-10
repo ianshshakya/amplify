@@ -115,7 +115,7 @@ class MiniPlayer extends ConsumerWidget {
                     ),
 
                     // Controls: like, prev, play/pause, next
-                    if (playerState.isLoading)
+                    if (playerState.status == PlaybackStatus.loading)
                       const SizedBox(
                         width: 24,
                         height: 24,
@@ -123,6 +123,11 @@ class MiniPlayer extends ConsumerWidget {
                           strokeWidth: 2,
                           color: AppColors.primary,
                         ),
+                      )
+                    else if (playerState.status == PlaybackStatus.error)
+                      IconButton(
+                        icon: const Icon(Icons.error_outline, color: Colors.redAccent, size: 28),
+                        onPressed: () => ref.read(playerProvider.notifier).playTrack(track),
                       )
                     else ...[
                       IconButton(
@@ -132,7 +137,7 @@ class MiniPlayer extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(
-                          playerState.isPlaying
+                          playerState.status == PlaybackStatus.playing
                               ? Icons.pause_circle_filled
                               : Icons.play_circle_filled,
                           size: 34,

@@ -8,14 +8,15 @@ import '../services/offline_service.dart';
 import '../services/user_data_service.dart';
 
 enum RepeatMode { off, all, one }
+enum PlaybackStatus { idle, loading, playing, paused, error }
 
 @immutable
 class PlayerState {
   final Track? currentTrack;
   final List<Track> queue;
   final int currentIndex;
-  final bool isLoading;
-  final bool isPlaying;
+  final PlaybackStatus status;
+  final String? errorMessage;
   final RepeatMode repeatMode;
   final bool shuffleEnabled;
   final Duration duration;
@@ -24,8 +25,8 @@ class PlayerState {
     this.currentTrack,
     this.queue = const [],
     this.currentIndex = -1,
-    this.isLoading = false,
-    this.isPlaying = false,
+    this.status = PlaybackStatus.idle,
+    this.errorMessage,
     this.repeatMode = RepeatMode.off,
     this.shuffleEnabled = false,
     this.duration = Duration.zero,
@@ -35,19 +36,20 @@ class PlayerState {
     Track? currentTrack,
     List<Track>? queue,
     int? currentIndex,
-    bool? isLoading,
-    bool? isPlaying,
+    PlaybackStatus? status,
+    String? errorMessage,
     RepeatMode? repeatMode,
     bool? shuffleEnabled,
     Duration? duration,
     bool clearTrack = false,
+    bool clearError = false,
   }) =>
       PlayerState(
         currentTrack: clearTrack ? null : (currentTrack ?? this.currentTrack),
         queue: queue ?? this.queue,
         currentIndex: currentIndex ?? this.currentIndex,
-        isLoading: isLoading ?? this.isLoading,
-        isPlaying: isPlaying ?? this.isPlaying,
+        status: status ?? this.status,
+        errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         repeatMode: repeatMode ?? this.repeatMode,
         shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
         duration: duration ?? this.duration,
@@ -56,26 +58,36 @@ class PlayerState {
 
 /// Central playback controller.
 /// Uses Riverpod StateNotifier so any ConsumerWidget can listen to the player state.
+import '../services/api_client.dart';
+
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final MusicService _musicService = MusicService();
   final UserDataService _userDataService = UserDataService();
 
-  /// Expose the raw position stream so widgets can build a seek slider.
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
 
   PlayerNotifier() : super(const PlayerState()) {
-    // Sync isPlaying + processingState with Riverpod state
     _audioPlayer.playerStateStream.listen((audioState) {
+      PlaybackStatus nextStatus = state.status;
+      if (state.status != PlaybackStatus.error) {
+        if (audioState.processingState == ProcessingState.buffering || audioState.processingState == ProcessingState.loading) {
+          nextStatus = PlaybackStatus.loading;
+        } else if (audioState.playing) {
+          nextStatus = PlaybackStatus.playing;
+        } else {
+          nextStatus = PlaybackStatus.paused;
+        }
+      }
+      
       state = state.copyWith(
-        isPlaying: audioState.playing,
+        status: nextStatus,
       );
       if (audioState.processingState == ProcessingState.completed) {
         _handleTrackCompletion();
       }
     });
 
-    // Keep duration in sync
     _audioPlayer.durationStream.listen((d) {
       if (d != null) state = state.copyWith(duration: d);
     });
@@ -83,7 +95,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   // ─── Playback control ──────────────────────────────────────────────────────
 
-  /// Play a track immediately, replacing the queue with [context] so next/prev work.
   Future<void> playTrack(Track track, {List<Track>? context}) async {
     final queue = context ?? [track];
     var idx = queue.indexWhere((t) => t.videoId == track.videoId);
@@ -101,7 +112,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final track = _currentTrack;
     if (track == null) return;
 
-    state = state.copyWith(isLoading: true, currentTrack: track);
+    state = state.copyWith(status: PlaybackStatus.loading, currentTrack: track, clearError: true);
     await _audioPlayer.stop(); // Stop previous song to prevent playing old audio if new fetch fails
 
     try {
@@ -130,15 +141,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
 
       await _audioPlayer.setAudioSource(audioSource);
-      // Do NOT await play() — it only resolves when the song finishes.
       _audioPlayer.play();
 
-      // Fire-and-forget: log history
       _userDataService.logWatchHistory(track).catchError((_) {});
+    } on StreamUnavailableException catch (e) {
+      debugPrint('[Player] Stream unavailable: $e');
+      state = state.copyWith(status: PlaybackStatus.error, errorMessage: e.message);
     } catch (e) {
       debugPrint('[Player] Error loading ${track.title}: $e');
-    } finally {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(status: PlaybackStatus.error, errorMessage: "Couldn't play this song — please try another.");
     }
   }
 

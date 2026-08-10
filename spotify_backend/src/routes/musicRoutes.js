@@ -92,49 +92,8 @@ router.get('/search', async (req, res) => {
   }
 });
 
-const https = require('https');
-
-async function getPipedStream(videoId) {
-  const instances = [
-    'https://pipedapi.kavin.rocks',
-    'https://pipedapi.tokhmi.xyz',
-    'https://pipedapi.smnz.de',
-    'https://pipedapi.adminforge.de',
-    'https://pipedapi.syncpundit.io'
-  ];
-
-  for (const instance of instances) {
-    try {
-      const url = await new Promise((resolve) => {
-        https.get(`${instance}/streams/${videoId}`, (res) => {
-          if (res.statusCode !== 200) {
-            return resolve(null);
-          }
-          let data = '';
-          res.on('data', chunk => data += chunk);
-          res.on('end', () => {
-            try {
-              const json = JSON.parse(data);
-              if (json.audioStreams && json.audioStreams.length > 0) {
-                const best = json.audioStreams.find(s => s.mimeType.includes('mp4') || s.mimeType.includes('m4a')) || json.audioStreams[0];
-                resolve(best.url);
-              } else {
-                resolve(null);
-              }
-            } catch (e) {
-              resolve(null);
-            }
-          });
-        }).on('error', () => resolve(null));
-      });
-      
-      if (url) return url;
-    } catch (e) {
-      continue;
-    }
-  }
-  return null;
-}
+const youtubedl = require('youtube-dl-exec');
+const fs = require('fs');
 
 router.get('/stream/:songId', async (req, res) => {
   try {
@@ -145,19 +104,33 @@ router.get('/stream/:songId', async (req, res) => {
 
     const videoUrl = `https://www.youtube.com/watch?v=${songId}`;
     
+    const clients = ['android', 'web'];
+    const cookiesPath = '/etc/secrets/cookies.txt';
+    const hasCookies = fs.existsSync(cookiesPath);
+    
     let streamUrl = null;
-    let attempts = 0;
-    while (attempts < 2 && !streamUrl) {
+    let lastError = null;
+
+    for (const client of clients) {
       try {
-        const info = await playdl.stream(videoUrl);
-        streamUrl = info.url;
-      } catch (err) {
-        attempts++;
-        if (attempts >= 2) {
-          console.log(`play-dl failed for ${songId}, falling back to Piped API...`);
-          streamUrl = await getPipedStream(songId);
-          if (!streamUrl) throw err;
+        const args = {
+          dumpSingleJson: true,
+          noWarnings: true,
+          noCheckCertificate: true,
+          youtubeSkipDashManifest: true,
+          format: 'bestaudio',
+          extractorArgs: `youtube:player_client=${client}`
+        };
+        if (hasCookies) {
+          args.cookies = cookiesPath;
         }
+
+        const info = await youtubedl(videoUrl, args);
+        streamUrl = info.url;
+        if (streamUrl) break; // success
+      } catch (err) {
+        lastError = err;
+        // Wait before trying next client
         await new Promise(r => setTimeout(r, 1000));
       }
     }
@@ -166,10 +139,14 @@ router.get('/stream/:songId', async (req, res) => {
       cacheSet(cacheKey, streamUrl, 60);
       res.json({ url: streamUrl });
     } else {
-      res.status(404).json({ error: 'Stream not found' });
+      console.error('Stream error (yt-dlp blocked):', lastError?.message || lastError);
+      res.status(502).json({ 
+        error: 'stream_unavailable', 
+        message: 'YouTube blocked the request. Please try another track or try again later.' 
+      });
     }
   } catch (error) {
-    console.error('Stream error:', error);
+    console.error('Unexpected Stream error:', error);
     res.status(500).json({ error: 'Failed to get stream URL' });
   }
 });

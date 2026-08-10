@@ -71,6 +71,15 @@ class ApiClient {
     final message = decoded is Map && decoded['message'] != null
         ? decoded['message'] as String
         : 'Something went wrong (${res.statusCode})';
+        
+    if (res.statusCode == 502 || (decoded is Map && decoded['error'] == 'stream_unavailable')) {
+      throw StreamUnavailableException(res.statusCode, message);
+    }
+    
     throw ApiException(res.statusCode, message);
   }
+}
+
+class StreamUnavailableException extends ApiException {
+  StreamUnavailableException(super.statusCode, super.message);
 }

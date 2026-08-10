@@ -161,6 +161,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               fontSize: 16,
                             ),
                           ),
+                          if (playerState.status == PlaybackStatus.error)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                playerState.errorMessage ?? 'Error loading track',
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -259,14 +269,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       child: IconButton(
                         iconSize: 42,
                         color: Colors.black,
-                        icon: playerState.isLoading
+                        icon: playerState.status == PlaybackStatus.loading
                             ? const SizedBox(
                                 width: 28,
                                 height: 28,
                                 child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
                               )
-                            : Icon(playerState.isPlaying ? Icons.pause : Icons.play_arrow),
-                        onPressed: () => ref.read(playerProvider.notifier).togglePlayPause(),
+                            : playerState.status == PlaybackStatus.error
+                                ? const Icon(Icons.error_outline, color: Colors.red)
+                                : Icon(playerState.status == PlaybackStatus.playing ? Icons.pause : Icons.play_arrow),
+                        onPressed: playerState.status == PlaybackStatus.error 
+                            ? () => ref.read(playerProvider.notifier).playTrack(track) // Retry 
+                            : () => ref.read(playerProvider.notifier).togglePlayPause(),
                       ),
                     ),
                     IconButton(
