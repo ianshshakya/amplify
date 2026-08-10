@@ -104,42 +104,56 @@ router.get('/stream/:songId', async (req, res) => {
 
     const videoUrl = `https://www.youtube.com/watch?v=${songId}`;
     
-    // We will use public Piped API instances to act as a proxy.
-    // This entirely bypasses YouTube's datacenter IP block because the Piped servers handle the extraction!
-    const pipedInstances = [
-      'https://pipedapi.kavin.rocks',
-      'https://api.piped.projectsegfau.lt',
-      'https://pipedapi.in.projectsegfau.lt',
-      'https://pipedapi.smnz.de'
-    ];
-    
     let streamUrl = null;
     let lastError = null;
 
-    for (const instance of pipedInstances) {
+    // 1. Try Invidious API (Very resilient to datacenter blocks)
+    const invidiousInstances = [
+      'https://inv.tux.pizza',
+      'https://invidious.nerdvpn.de',
+      'https://invidious.lunar.icu',
+      'https://invidious.privacydev.net'
+    ];
+    
+    for (const instance of invidiousInstances) {
+      if (streamUrl) break;
       try {
-        const response = await fetch(`${instance}/streams/${songId}`, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-          }
+        const response = await fetch(`${instance}/api/v1/videos/${songId}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
         });
         
-        if (!response.ok) throw new Error(`Piped returned ${response.status}`);
-        
-        const data = await response.json();
-        
-        // Find the best audio stream
-        if (data.audioStreams && data.audioStreams.length > 0) {
-          // Sort by bitrate to get the best quality
-          const bestAudio = data.audioStreams.sort((a, b) => b.bitrate - a.bitrate)[0];
-          if (bestAudio && bestAudio.url) {
-            streamUrl = bestAudio.url;
-            break; // Success!
+        if (response.ok) {
+          const data = await response.json();
+          // Invidious returns formatStreams (which contain video+audio or audio only)
+          // and adaptiveFormats (which contain separate audio tracks)
+          const formats = [...(data.adaptiveFormats || []), ...(data.formatStreams || [])];
+          
+          // Try to find the best audio-only stream (m4a or webm)
+          const audioFormats = formats.filter(f => f.type && f.type.startsWith('audio'));
+          if (audioFormats.length > 0) {
+            // Sort by bitrate highest to lowest
+            audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
+            streamUrl = audioFormats[0].url;
+          } else if (formats.length > 0) {
+            streamUrl = formats[0].url;
           }
         }
       } catch (err) {
         lastError = err;
-        // Try the next instance
+      }
+    }
+
+    // 2. Fallback to @distube/ytdl-core (Built specifically to bypass bot detection on servers)
+    if (!streamUrl) {
+      try {
+        const ytdl = require('@distube/ytdl-core');
+        const info = await ytdl.getInfo(videoUrl);
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+        if (format && format.url) {
+          streamUrl = format.url;
+        }
+      } catch (err) {
+        lastError = err;
       }
     }
 
@@ -147,7 +161,7 @@ router.get('/stream/:songId', async (req, res) => {
       cacheSet(cacheKey, streamUrl, 60);
       res.json({ url: streamUrl });
     } else {
-      console.error('All Piped instances failed:', lastError?.message || lastError);
+      console.error('All extraction methods failed:', lastError?.message || lastError);
       res.status(502).json({ 
         error: 'stream_unavailable', 
         message: 'Could not bypass YouTube restrictions right now. Please try again later.' 
