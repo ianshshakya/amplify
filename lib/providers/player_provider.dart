@@ -7,6 +7,7 @@ import '../services/music_service.dart';
 import '../services/offline_service.dart';
 import '../services/user_data_service.dart';
 import '../services/api_client.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 enum RepeatMode { off, all, one }
 enum PlaybackStatus { idle, loading, playing, paused, error }
