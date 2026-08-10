@@ -3,9 +3,14 @@
 class Track {
   final String videoId;
   final String title;
-  final String artist; // channel/artist name displayed under song title
+  final String artist; 
   final String thumbnailUrl;
   final Duration duration;
+
+  // New unified source fields
+  final String? source;
+  final String? streamUrl;
+  final int? bitrate;
 
   // Optional enrichment fields (populated in artist/album detail views)
   final String? artistId;
@@ -19,6 +24,9 @@ class Track {
     required this.artist,
     required this.thumbnailUrl,
     required this.duration,
+    this.source,
+    this.streamUrl,
+    this.bitrate,
     this.artistId,
     this.albumId,
     this.albumTitle,
@@ -31,6 +39,9 @@ class Track {
     String? artist,
     String? thumbnailUrl,
     Duration? duration,
+    String? source,
+    String? streamUrl,
+    int? bitrate,
     String? artistId,
     String? albumId,
     String? albumTitle,
@@ -42,6 +53,9 @@ class Track {
         artist: artist ?? this.artist,
         thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
         duration: duration ?? this.duration,
+        source: source ?? this.source,
+        streamUrl: streamUrl ?? this.streamUrl,
+        bitrate: bitrate ?? this.bitrate,
         artistId: artistId ?? this.artistId,
         albumId: albumId ?? this.albumId,
         albumTitle: albumTitle ?? this.albumTitle,
@@ -54,6 +68,9 @@ class Track {
         'artist': artist,
         'thumbnailUrl': thumbnailUrl,
         'durationMs': duration.inMilliseconds,
+        if (source != null) 'source': source,
+        if (streamUrl != null) 'streamUrl': streamUrl,
+        if (bitrate != null) 'bitrate': bitrate,
         if (artistId != null) 'artistId': artistId,
         if (albumId != null) 'albumId': albumId,
         if (albumTitle != null) 'albumTitle': albumTitle,
@@ -66,6 +83,9 @@ class Track {
         artist: json['artist'] as String? ?? 'Unknown Artist',
         thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
         duration: Duration(milliseconds: (json['durationMs'] as num?)?.toInt() ?? 0),
+        source: json['source'] as String?,
+        streamUrl: json['streamUrl'] as String?,
+        bitrate: (json['bitrate'] as num?)?.toInt(),
         artistId: json['artistId'] as String?,
         albumId: json['albumId'] as String?,
         albumTitle: json['albumTitle'] as String?,

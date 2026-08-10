@@ -19,6 +19,7 @@
     "mongodb": "^7.5.0",
     "mongoose": "^8.5.2",
     "play-dl": "^1.9.7",
+    "string-similarity": "^4.0.4",
     "youtube-dl-exec": "^3.1.12",
     "ytmusic-api": "^5.3.1"
   },

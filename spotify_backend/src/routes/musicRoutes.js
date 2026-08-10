@@ -36,52 +36,126 @@ function getBestThumbnail(thumbnails) {
   return url;
 }
 
+const stringSimilarity = require('string-similarity');
+
+function normalizeStr(str) {
+  if (!str) return '';
+  return str.toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\b(feat\.?|ft\.?|featuring)\b.*$/g, '')
+    .replace(/[^\w\s]/gi, '')
+    .trim();
+}
+
+function pickBetterVersion(a, b) {
+  if (a.bitrate !== b.bitrate) {
+    return a.bitrate > b.bitrate ? a : b;
+  }
+  return a.source === 'jiosaavn' ? a : b;
+}
+
 router.get('/search', async (req, res) => {
   try {
     const { q, type = 'songs' } = req.query;
     if (!q) return res.status(400).json({ error: 'Query parameter q is required' });
 
-    const cacheKey = `search:${type}:${q}`;
+    const cacheKey = `search:unified:${type}:${q}`;
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
 
-    await initYTMusic();
     let results = [];
 
     if (type === 'songs') {
-      const raw = await ytmusic.searchSongs(q);
-      results = raw.map(s => ({
-        videoId: s.videoId,
-        title: s.name,
-        artist: s.artist?.name || 'Unknown Artist',
-        thumbnailUrl: getBestThumbnail(s.thumbnails),
-        duration: s.duration
-      }));
-    } else if (type === 'albums') {
-      const raw = await ytmusic.searchAlbums(q);
-      results = raw.map(a => ({
-        id: a.albumId,
-        title: a.name,
-        artistName: a.artist?.name || 'Unknown Artist',
-        thumbnailUrl: getBestThumbnail(a.thumbnails),
-        year: a.year
-      }));
-    } else if (type === 'artists') {
-      const raw = await ytmusic.searchArtists(q);
-      results = raw.map(a => ({
-        id: a.artistId,
-        name: a.name,
-        thumbnailUrl: getBestThumbnail(a.thumbnails)
-      }));
-    } else if (type === 'playlists') {
-      const raw = await ytmusic.searchPlaylists(q);
-      results = raw.map(p => ({
-        id: p.playlistId,
-        title: p.name,
-        thumbnailUrl: getBestThumbnail(p.thumbnails)
-      }));
+      const saavnPromise = fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(q)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data?.data?.results) return [];
+          return data.data.results.map(s => {
+            const bestImage = s.image?.sort((a, b) => parseInt(b.quality) - parseInt(a.quality))[0]?.url;
+            const bestAudio = s.downloadUrl?.sort((a, b) => parseInt(b.quality) - parseInt(a.quality))[0];
+            return {
+              videoId: s.id, // keeping videoId key for flutter model compatibility
+              source: 'jiosaavn',
+              title: s.name,
+              artist: s.primaryArtists || 'Unknown Artist',
+              thumbnailUrl: bestImage || '',
+              duration: parseInt(s.duration) || 0,
+              streamUrl: bestAudio?.url || '',
+              bitrate: parseInt(bestAudio?.quality) || 128,
+              album: s.album?.name || null
+            };
+          }).filter(s => s.streamUrl !== '');
+        }).catch(() => []);
+
+      const jamendoPromise = fetch(`https://api.jamendo.com/v3.0/tracks?client_id=56d30c95&format=json&limit=20&search=${encodeURIComponent(q)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data?.results) return [];
+          return data.results.map(s => ({
+            videoId: s.id,
+            source: 'jamendo',
+            title: s.name,
+            artist: s.artist_name || 'Unknown Artist',
+            thumbnailUrl: s.image || '',
+            duration: parseInt(s.duration) || 0,
+            streamUrl: s.audio || '',
+            bitrate: 128, // Jamendo default MP3 bitrate for free API
+            album: s.album_name || null
+          })).filter(s => s.streamUrl !== '');
+        }).catch(() => []);
+
+      const [saavnResults, jamendoResults] = await Promise.all([saavnPromise, jamendoPromise]);
+      const allResults = [...saavnResults, ...jamendoResults];
+      
+      // Deduplication using fuzzy match
+      const deduplicated = [];
+      for (const item of allResults) {
+        let isDuplicate = false;
+        const normTitle = normalizeStr(item.title);
+        const normArtist = normalizeStr(item.artist);
+
+        for (let i = 0; i < deduplicated.length; i++) {
+          const existing = deduplicated[i];
+          const existTitle = normalizeStr(existing.title);
+          const existArtist = normalizeStr(existing.artist);
+
+          const titleSim = stringSimilarity.compareTwoStrings(normTitle, existTitle);
+          const artistSim = stringSimilarity.compareTwoStrings(normArtist, existArtist);
+
+          if (titleSim > 0.85 && artistSim > 0.7) {
+            isDuplicate = true;
+            deduplicated[i] = pickBetterVersion(existing, item);
+            break;
+          }
+        }
+        if (!isDuplicate) {
+          deduplicated.push(item);
+        }
+      }
+      results = deduplicated;
     } else {
-      return res.status(400).json({ error: 'Invalid search type' });
+      // Fallback to YouTube Music for artists, albums, playlists (since Saavn/Jamendo API for these require full app rewrite)
+      await initYTMusic();
+      if (type === 'albums') {
+        const raw = await ytmusic.searchAlbums(q);
+        results = raw.map(a => ({
+          id: a.albumId, title: a.name, artistName: a.artist?.name || 'Unknown Artist',
+          thumbnailUrl: getBestThumbnail(a.thumbnails), year: a.year
+        }));
+      } else if (type === 'artists') {
+        const raw = await ytmusic.searchArtists(q);
+        results = raw.map(a => ({
+          id: a.artistId, name: a.name, thumbnailUrl: getBestThumbnail(a.thumbnails)
+        }));
+      } else if (type === 'playlists') {
+        const raw = await ytmusic.searchPlaylists(q);
+        results = raw.map(p => ({
+          id: p.playlistId, title: p.name, thumbnailUrl: getBestThumbnail(p.thumbnails)
+        }));
+      } else {
+        return res.status(400).json({ error: 'Invalid search type' });
+      }
     }
 
     cacheSet(cacheKey, results, 300);

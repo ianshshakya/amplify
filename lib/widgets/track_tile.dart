@@ -37,14 +37,34 @@ class TrackTile extends ConsumerWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       onTap: () => ref.read(playerProvider.notifier).playTrack(track, context: context_),
       leading: _buildLeading(context, isCurrentTrack, isPlaying),
-      title: Text(
-        track.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          color: isCurrentTrack ? AppColors.primary : null,
-        ),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              track.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: isCurrentTrack ? AppColors.primary : null,
+              ),
+            ),
+          ),
+          if (track.source == 'jamendo')
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.withOpacity(0.2),
+                border: Border.all(color: Colors.deepPurple, width: 0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Indie',
+                style: TextStyle(fontSize: 9, color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
       ),
       subtitle: Text(
         track.artist,

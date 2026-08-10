@@ -128,8 +128,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           tag: _makeMediaItem(track),
         );
       } else {
-        debugPrint('[Player] Fetching stream for ${track.videoId}...');
-        final streamUrl = await _musicService.getAudioStreamUrl(track.videoId);
+        String streamUrl;
+        if (track.streamUrl != null && track.streamUrl!.isNotEmpty) {
+          debugPrint('[Player] Using direct stream URL for ${track.title}');
+          streamUrl = track.streamUrl!;
+        } else {
+          debugPrint('[Player] Fetching stream for ${track.videoId}...');
+          streamUrl = await _musicService.getAudioStreamUrl(track.videoId);
+        }
+        
         audioSource = AudioSource.uri(
           Uri.parse(streamUrl),
           headers: {
