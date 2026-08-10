@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
@@ -8,10 +8,12 @@ import 'playlist_screen.dart';
 import 'downloaded_songs_screen.dart';
 import 'auth_gate.dart';
 
-class LibraryScreen extends StatelessWidget {
+import 'settings_screen.dart';
+
+class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
-  Future<void> _createPlaylistDialog(BuildContext context) async {
+  Future<void> _createPlaylistDialog(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -37,12 +39,12 @@ class LibraryScreen extends StatelessWidget {
       ),
     );
 
-    if (name != null && name.isNotEmpty && context.mounted) {
-      await context.read<PlaylistProvider>().createPlaylist(name);
+    if (name != null && name.isNotEmpty) {
+      await ref.read(playlistProvider.notifier).createPlaylist(name);
     }
   }
 
-  Future<void> _confirmLogout(BuildContext context) async {
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -55,9 +57,9 @@ class LibraryScreen extends StatelessWidget {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
-      await context.read<AuthProvider>().logout();
-      context.read<PlaylistProvider>().clear();
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).logout();
+      ref.read(playlistProvider.notifier).clear();
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthGate()),
@@ -67,10 +69,10 @@ class LibraryScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final playlistProvider = context.watch<PlaylistProvider>();
-    final auth = context.watch<AuthProvider>();
-    final playlists = playlistProvider.playlists;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playlistState = ref.watch(playlistProvider);
+    final authState = ref.watch(authProvider);
+    final playlists = playlistState.playlists;
 
     return SafeArea(
       child: Column(
@@ -84,18 +86,25 @@ class LibraryScreen extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.add),
-                  onPressed: () => _createPlaylistDialog(context),
+                  onPressed: () => _createPlaylistDialog(context, ref),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings, size: 20),
+                  tooltip: 'Settings',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.logout, size: 20),
-                  tooltip: auth.user?.email ?? 'Log out',
-                  onPressed: () => _confirmLogout(context),
+                  tooltip: authState.user?.email ?? 'Log out',
+                  onPressed: () => _confirmLogout(context, ref),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: playlistProvider.isLoading
+            child: playlistState.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : ListView(
                     children: [
@@ -111,7 +120,7 @@ class LibraryScreen extends StatelessWidget {
                         ),
                         title: const Text('Liked Songs'),
                         subtitle: Text(
-                          '${playlistProvider.likedSongsTracks.length} songs',
+                          '${playlistState.likedSongs.length} songs',
                           style: const TextStyle(color: AppColors.textSecondary),
                         ),
                         onTap: () => Navigator.of(context).push(

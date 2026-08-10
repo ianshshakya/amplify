@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 const musicRoutes = require('./routes/musicRoutes');
 const homeRoutes = require('./routes/homeRoutes');
+const podcastRoutes = require('./routes/podcastRoutes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/podcasts', podcastRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

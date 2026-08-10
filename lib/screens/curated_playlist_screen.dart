@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/track.dart';
 import '../services/music_service.dart';
@@ -9,16 +9,16 @@ import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/mini_player.dart';
 
-class CuratedPlaylistScreen extends StatefulWidget {
+class CuratedPlaylistScreen extends ConsumerStatefulWidget {
   final CuratedPlaylist playlist;
 
   const CuratedPlaylistScreen({super.key, required this.playlist});
 
   @override
-  State<CuratedPlaylistScreen> createState() => _CuratedPlaylistScreenState();
+  ConsumerState<CuratedPlaylistScreen> createState() => _CuratedPlaylistScreenState();
 }
 
-class _CuratedPlaylistScreenState extends State<CuratedPlaylistScreen> {
+class _CuratedPlaylistScreenState extends ConsumerState<CuratedPlaylistScreen> {
   late Future<CuratedPlaylistData?> _playlistDataFuture;
 
   @override
@@ -57,7 +57,7 @@ class _CuratedPlaylistScreenState extends State<CuratedPlaylistScreen> {
   }
 
   void _saveAsMyPlaylist(BuildContext context, List<Track> tracks) async {
-    final playlistsProvider = context.read<PlaylistProvider>();
+    final playlistsProvider = ref.read(playlistProvider.notifier);
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Creating playlist: ${widget.playlist.title}...')),
@@ -68,7 +68,7 @@ class _CuratedPlaylistScreenState extends State<CuratedPlaylistScreen> {
       await playlistsProvider.createPlaylist(widget.playlist.title);
       
       // 2. Find the ID of the newly created playlist
-      final newPlaylist = playlistsProvider.playlists.last;
+      final newPlaylist = ref.read(playlistProvider).playlists.last;
       
       // 3. Add all tracks to it
       for (var track in tracks) {

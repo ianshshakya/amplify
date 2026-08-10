@@ -16,11 +16,18 @@ dependencies:
   just_audio_background: ^0.0.1-beta.13
   audio_service: ^0.18.15
 
-  # State management
-  provider: ^6.1.2
+  # State management — Riverpod
+  flutter_riverpod: ^2.5.1
 
-  # Images
+  # Images & color extraction
   cached_network_image: ^3.3.1
+  palette_generator: ^0.3.3+3
+
+  # Typography
+  google_fonts: ^6.2.1
+
+  # Authentication
+  google_sign_in: ^6.2.1
 
   # Utilities
   equatable: ^2.0.5
@@ -44,8 +51,6 @@ flutter:
     - assets/images/
     - assets/icon/
 
-# Generates native app icons (Android + iOS) from a single source image.
-# Run: flutter pub run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
   ios: true

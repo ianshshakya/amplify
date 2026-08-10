@@ -1,0 +1,81 @@
+Analyzing spotify_clone...                                      
+
+warning - The declaration '_loadRecent' isn't referenced. Try removing the declaration of '_loadRecent' - lib\providers\auth_provider.dart:43:16 - unused_element
+warning - Unused import: '../theme/app_theme.dart'. Try removing the import directive - lib\screens\album_screen.dart:5:8 - unused_import
+warning - Unused import: '../models/album.dart'. Try removing the import directive - lib\screens\album_screen.dart:8:8 - unused_import
+warning - Unused import: '../models/track.dart'. Try removing the import directive - lib\screens\album_screen.dart:9:8 - unused_import
+warning - Unused import: '../theme/app_theme.dart'. Try removing the import directive - lib\screens\artist_screen.dart:5:8 - unused_import
+warning - Unused import: '../providers/player_provider.dart'. Try removing the import directive - lib\screens\artist_screen.dart:7:8 - unused_import
+warning - Unused import: '../models/artist.dart'. Try removing the import directive - lib\screens\artist_screen.dart:8:8 - unused_import
+warning - Unused import: '../models/track.dart'. Try removing the import directive - lib\screens\artist_screen.dart:9:8 - unused_import
+warning - Unused import: '../models/album.dart'. Try removing the import directive - lib\screens\artist_screen.dart:10:8 - unused_import
+warning - The left operand can't be null, so the right operand is never executed. Try removing the operator and the right operand - lib\screens\artist_screen.dart:79:52 - dead_null_aware_expression
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:117:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:118:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:134:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:135:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:162:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:163:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:190:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\artist_screen.dart:191:26 - prefer_const_constructors
+  error - Target of URI doesn't exist: 'providers/auth_provider.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\auth_gate.dart:3:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'providers/playlist_provider.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\auth_gate.dart:4:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'screens/login_screen.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\auth_gate.dart:5:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'screens/root_shell.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\auth_gate.dart:6:8 - uri_does_not_exist
+  error - Undefined name 'authProvider'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:22:16 - undefined_identifier
+  error - Undefined name 'authProvider'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:28:28 - undefined_identifier
+  error - Undefined name 'AuthStatus'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:31:7 - undefined_identifier
+  error - Undefined name 'AuthStatus'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:34:7 - undefined_identifier
+  error - The name 'LoginScreen' isn't a class. Try correcting the name to match an existing class - lib\screens\auth_gate.dart:34:37 - creation_with_non_type
+  error - Undefined name 'AuthStatus'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:35:7 - undefined_identifier
+  error - Undefined name 'playlistProvider'. Try correcting the name to one that is defined, or defining the name - lib\screens\auth_gate.dart:51:16 - undefined_identifier
+  error - The name 'RootShell' isn't a class. Try correcting the name to match an existing class - lib\screens\auth_gate.dart:56:47 - creation_with_non_type
+warning - Unused import: '../models/track.dart'. Try removing the import directive - lib\screens\charts_screen.dart:5:8 - unused_import
+   info - Statements in an if should be enclosed in a block. Try wrapping the statement in a block - lib\screens\charts_screen.dart:34:31 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block. Try wrapping the statement in a block - lib\screens\charts_screen.dart:35:36 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block. Try wrapping the statement in a block - lib\screens\charts_screen.dart:36:36 - curly_braces_in_flow_control_structures
+   info - The imported package 'provider' isn't a dependency of the importing package. Try adding a dependency for 'provider' in the 'pubspec.yaml' file - lib\screens\curated_playlist_screen.dart:2:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:provider/provider.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\curated_playlist_screen.dart:2:8 - uri_does_not_exist
+warning - Unused import: '../providers/playlist_provider.dart'. Try removing the import directive - lib\screens\curated_playlist_screen.dart:7:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\screens\curated_playlist_screen.dart:53:28 - use_build_context_synchronously
+  error - The method 'read' isn't defined for the type 'BuildContext'. Try correcting the name to the name of an existing method, or defining a method named 'read' - lib\screens\curated_playlist_screen.dart:60:39 - undefined_method
+  error - The name 'PlaylistProvider' isn't a type, so it can't be used as a type argument. Try correcting the name to an existing type, or defining a type named 'PlaylistProvider' - lib\screens\curated_playlist_screen.dart:60:44 - non_type_as_type_argument
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\screens\curated_playlist_screen.dart:79:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\screens\curated_playlist_screen.dart:85:30 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement - lib\screens\curated_playlist_screen.dart:131:52 - deprecated_member_use
+warning - Unused import: '../widgets/track_tile.dart'. Try removing the import directive - lib\screens\home_screen.dart:12:8 - unused_import
+warning - Unused import: '../models/lyrics.dart'. Try removing the import directive - lib\screens\lyrics_screen.dart:10:8 - unused_import
+warning - The value of the local variable 'isPodcast' isn't used. Try removing the variable or using it - lib\screens\player_screen.dart:71:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement - lib\screens\player_screen.dart:80:32 - deprecated_member_use
+  error - The name 'RepeatMode' is defined in the libraries 'package:Amplify/providers/player_provider.dart' and 'package:flutter/src/widgets/repeating_animation_builder.dart (via package:flutter/material.dart)'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports - lib\screens\player_screen.dart:278:51 - ambiguous_import
+  error - The name 'RepeatMode' is defined in the libraries 'package:Amplify/providers/player_provider.dart' and 'package:flutter/src/widgets/repeating_animation_builder.dart (via package:flutter/material.dart)'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports - lib\screens\player_screen.dart:281:58 - ambiguous_import
+  error - The named parameter 'maxLines' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'maxLines' - lib\screens\podcast_screen.dart:113:94 - undefined_named_parameter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement - lib\screens\queue_screen.dart:41:54 - deprecated_member_use
+   info - 'onReorder' is deprecated and shouldn't be used. Use the onReorderItem callback instead. The onReorderItem callback adjusts the newIndex parameter for a removed item at the oldIndex. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\screens\queue_screen.dart:59:23 - deprecated_member_use
+warning - Unused import: '../widgets/artist_card.dart'. Try removing the import directive - lib\screens\search_screen.dart:8:8 - unused_import
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\screens\settings_screen.dart:73:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:238:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:241:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:248:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:255:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:262:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:269:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\services\music_service.dart:276:11 - prefer_const_constructors
+  error - The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'.  - lib\theme\app_theme.dart:108:18 - argument_type_not_assignable
+  error - Invalid constant value - lib\theme\app_theme.dart:157:31 - invalid_constant
+  error - The method 'CupertinoPageTransitionsBuilder' isn't defined for the type 'AppTheme'. Try correcting the name to the name of an existing method, or defining a method named 'CupertinoPageTransitionsBuilder' - lib\theme\app_theme.dart:157:31 - undefined_method
+  error - The values in a const map literal must be constant. Try removing the keyword 'const' from the map literal - lib\theme\app_theme.dart:157:31 - non_constant_map_value
+warning - Unused import: '../theme/app_theme.dart'. Try removing the import directive - lib\widgets\mood_tile.dart:4:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement - lib\widgets\skeleton_loader.dart:91:28 - deprecated_member_use
+   info - The package name 'Amplify' isn't a lower_case_with_underscores identifier. Try changing the name to follow the lower_case_with_underscores style - pubspec.yaml:1:7 - package_names
+   info - The imported package 'hive_flutter' isn't a dependency of the importing package. Try adding a dependency for 'hive_flutter' in the 'pubspec.yaml' file - test\widget_test.dart:9:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:hive_flutter/hive_flutter.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - test\widget_test.dart:9:8 - uri_does_not_exist
+   info - The imported package 'spotify_clone' isn't a dependency of the importing package. Try adding a dependency for 'spotify_clone' in the 'pubspec.yaml' file - test\widget_test.dart:10:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:spotify_clone/main.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - test\widget_test.dart:10:8 - uri_does_not_exist
+   info - The imported package 'spotify_clone' isn't a dependency of the importing package. Try adding a dependency for 'spotify_clone' in the 'pubspec.yaml' file - test\widget_test.dart:11:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:spotify_clone/providers/playlist_provider.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - test\widget_test.dart:11:8 - uri_does_not_exist
+  error - Undefined name 'Hive'. Try correcting the name to one that is defined, or defining the name - test\widget_test.dart:16:11 - undefined_identifier
+  error - The function 'PlaylistProvider' isn't defined. Try importing the library that defines 'PlaylistProvider', correcting the name to the name of an existing function, or defining a function named 'PlaylistProvider' - test\widget_test.dart:18:30 - undefined_function
+  error - The function 'SpotifyCloneApp' isn't defined. Try importing the library that defines 'SpotifyCloneApp', correcting the name to the name of an existing function, or defining a function named 'SpotifyCloneApp' - test\widget_test.dart:21:29 - undefined_function
+
+77 issues found. (ran in 2.5s)

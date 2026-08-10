@@ -1,68 +1,92 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/player_provider.dart';
 import '../theme/app_theme.dart';
 import '../screens/player_screen.dart';
 
-/// The thin bar pinned above the bottom nav that shows what's currently
-/// playing, mirroring Spotify's mini player. Tapping it opens the full
-/// now-playing screen.
-class MiniPlayer extends StatelessWidget {
+/// The thin bar pinned above the bottom nav. Mirrors Spotify's mini player:
+/// - Tapping opens the full PlayerScreen with a Hero art transition
+/// - Swipe right → next track
+/// - Swipe left → previous track
+/// - Progress bar across the top
+class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final player = context.watch<PlayerProvider>();
-    final track = player.currentTrack;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playerState = ref.watch(playerProvider);
+    final track = playerState.currentTrack;
 
     if (track == null) return const SizedBox.shrink();
 
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const PlayerScreen()),
-        );
-      },
-      child: Container(
-        height: 64,
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceHighlight,
-          border: Border(top: BorderSide(color: Colors.black26, width: 0.5)),
+      onTap: () => Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const PlayerScreen(),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(
+            opacity: anim,
+            child: child,
+          ),
+          transitionDuration: AppDurations.medium,
         ),
+      ),
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity == null) return;
+        if (details.primaryVelocity! < -300) {
+          // Swipe left = next
+          ref.read(playerProvider.notifier).playNext();
+        } else if (details.primaryVelocity! > 300) {
+          // Swipe right = previous
+          ref.read(playerProvider.notifier).playPrevious();
+        }
+      },
+      child: Material(
+        color: AppColors.surfaceHighlight,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Progress bar
             StreamBuilder<Duration>(
-              stream: player.positionStream,
+              stream: ref.read(playerProvider.notifier).positionStream,
               builder: (context, snapshot) {
                 final position = snapshot.data ?? Duration.zero;
-                final total = player.duration;
+                final total = playerState.duration;
                 final progress = total.inMilliseconds > 0
-                    ? position.inMilliseconds / total.inMilliseconds
+                    ? (position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
                     : 0.0;
                 return LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
+                  value: progress,
                   minHeight: 2,
-                  backgroundColor: Colors.white24,
+                  backgroundColor: Colors.white12,
                   valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                 );
               },
             ),
-            Expanded(
+
+            // Content row
+            SizedBox(
+              height: 62,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: CachedNetworkImage(
-                        imageUrl: track.thumbnailUrl,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
+                    // Album art with Hero tag (matches PlayerScreen tag)
+                    Hero(
+                      tag: 'mini-player-art-${track.videoId}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: CachedNetworkImage(
+                          imageUrl: track.thumbnailUrl,
+                          width: 42,
+                          height: 42,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
+
+                    // Title & artist
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,9 +97,8 @@ class MiniPlayer extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                           Text(
@@ -84,28 +107,46 @@ class MiniPlayer extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (player.isLoading)
+
+                    // Controls: like, prev, play/pause, next
+                    if (playerState.isLoading)
                       const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
                       )
-                    else
+                    else ...[
+                      IconButton(
+                        icon: const Icon(Icons.skip_previous, size: 26),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => ref.read(playerProvider.notifier).playPrevious(),
+                      ),
                       IconButton(
                         icon: Icon(
-                          player.isPlaying
+                          playerState.isPlaying
                               ? Icons.pause_circle_filled
                               : Icons.play_circle_filled,
-                          size: 32,
+                          size: 34,
+                          color: AppColors.textPrimary,
                         ),
-                        onPressed: player.togglePlayPause,
+                        padding: EdgeInsets.zero,
+                        onPressed: () => ref.read(playerProvider.notifier).togglePlayPause(),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.skip_next, size: 26),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => ref.read(playerProvider.notifier).playNext(),
+                      ),
+                    ],
                   ],
                 ),
               ),

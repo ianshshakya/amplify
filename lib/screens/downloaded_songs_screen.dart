@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/track.dart';
 import '../services/offline_service.dart';
+import '../providers/download_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/mini_player.dart';
 
-class DownloadedSongsScreen extends StatefulWidget {
+class DownloadedSongsScreen extends ConsumerStatefulWidget {
   const DownloadedSongsScreen({super.key});
 
   @override
-  State<DownloadedSongsScreen> createState() => _DownloadedSongsScreenState();
+  ConsumerState<DownloadedSongsScreen> createState() => _DownloadedSongsScreenState();
 }
 
-class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
+class _DownloadedSongsScreenState extends ConsumerState<DownloadedSongsScreen> {
   List<Track> _downloadedTracks = [];
   bool _isLoading = true;
 
@@ -33,6 +35,11 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Re-load tracks whenever the download state changes (e.g. new downloads complete)
+    ref.listen(downloadProvider, (previous, next) {
+      _loadDownloadedTracks();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Downloads'),

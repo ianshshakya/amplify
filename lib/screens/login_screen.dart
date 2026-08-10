@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/app_theme.dart';
 import 'register_screen.dart';
 import 'root_shell.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSubmitting = false;
@@ -21,8 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     setState(() => _isSubmitting = true);
 
-    final auth = context.read<AuthProvider>();
-    final success = await auth.login(
+    final authNotifier = ref.read(authProvider.notifier);
+    final success = await authNotifier.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
@@ -31,16 +31,44 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      await context.read<PlaylistProvider>().loadUserData();
+      await ref.read(playlistProvider.notifier).loadUserData();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const RootShell()),
         (route) => false,
       );
-    } else if (auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!)),
+    } else {
+      final error = ref.read(authProvider).error;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
+    }
+  }
+
+  Future<void> _googleSignIn() async {
+    setState(() => _isSubmitting = true);
+
+    final success = await ref.read(authProvider.notifier).loginWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (success) {
+      await ref.read(playlistProvider.notifier).loadUserData();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const RootShell()),
+        (route) => false,
       );
+    } else {
+      final error = ref.read(authProvider).error;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
     }
   }
 
@@ -100,6 +128,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       )
                     : const Text('Log in', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
+              const SizedBox(height: 16),
+              
+              // ─── Google Sign-In Button ───────────────────────────────────────
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
+                icon: const Icon(Icons.g_mobiledata, size: 28),
+                label: const Text('Continue with Google'),
+                onPressed: _isSubmitting ? null : _googleSignIn,
+              ),
+              
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {

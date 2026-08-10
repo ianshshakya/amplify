@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../theme/app_theme.dart';
 import 'root_shell.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,27 +21,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     setState(() => _isSubmitting = true);
 
-    final auth = context.read<AuthProvider>();
-    final success = await auth.register(
-      _nameController.text.trim(),
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    final success = await ref.read(authProvider.notifier).register(
+          _nameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (success) {
-      await context.read<PlaylistProvider>().loadUserData();
+      await ref.read(playlistProvider.notifier).loadUserData();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const RootShell()),
         (route) => false,
       );
-    } else if (auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!)),
-      );
+    } else {
+      final error = ref.read(authProvider).error;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
     }
   }
 

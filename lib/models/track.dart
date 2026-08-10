@@ -1,19 +1,52 @@
-/// Represents a single playable track sourced from YouTube.
-/// Used across search results, playlists, and the now-playing player.
+/// Represents a single playable track sourced from YouTube Music.
+/// Used across search results, playlists, artist pages, and the now-playing player.
 class Track {
   final String videoId;
   final String title;
-  final String artist; // channel name, used as "artist"
+  final String artist; // channel/artist name displayed under song title
   final String thumbnailUrl;
   final Duration duration;
 
-  Track({
+  // Optional enrichment fields (populated in artist/album detail views)
+  final String? artistId;
+  final String? albumId;
+  final String? albumTitle;
+  final int? trackNumber;
+
+  const Track({
     required this.videoId,
     required this.title,
     required this.artist,
     required this.thumbnailUrl,
     required this.duration,
+    this.artistId,
+    this.albumId,
+    this.albumTitle,
+    this.trackNumber,
   });
+
+  Track copyWith({
+    String? videoId,
+    String? title,
+    String? artist,
+    String? thumbnailUrl,
+    Duration? duration,
+    String? artistId,
+    String? albumId,
+    String? albumTitle,
+    int? trackNumber,
+  }) =>
+      Track(
+        videoId: videoId ?? this.videoId,
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+        duration: duration ?? this.duration,
+        artistId: artistId ?? this.artistId,
+        albumId: albumId ?? this.albumId,
+        albumTitle: albumTitle ?? this.albumTitle,
+        trackNumber: trackNumber ?? this.trackNumber,
+      );
 
   Map<String, dynamic> toJson() => {
         'videoId': videoId,
@@ -21,14 +54,22 @@ class Track {
         'artist': artist,
         'thumbnailUrl': thumbnailUrl,
         'durationMs': duration.inMilliseconds,
+        if (artistId != null) 'artistId': artistId,
+        if (albumId != null) 'albumId': albumId,
+        if (albumTitle != null) 'albumTitle': albumTitle,
+        if (trackNumber != null) 'trackNumber': trackNumber,
       };
 
   factory Track.fromJson(Map<String, dynamic> json) => Track(
-        videoId: json['videoId'],
-        title: json['title'],
-        artist: json['artist'],
-        thumbnailUrl: json['thumbnailUrl'],
-        duration: Duration(milliseconds: json['durationMs']),
+        videoId: json['videoId'] as String? ?? '',
+        title: json['title'] as String? ?? 'Unknown',
+        artist: json['artist'] as String? ?? 'Unknown Artist',
+        thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+        duration: Duration(milliseconds: (json['durationMs'] as num?)?.toInt() ?? 0),
+        artistId: json['artistId'] as String?,
+        albumId: json['albumId'] as String?,
+        albumTitle: json['albumTitle'] as String?,
+        trackNumber: (json['trackNumber'] as num?)?.toInt(),
       );
 
   @override
@@ -39,33 +80,34 @@ class Track {
   int get hashCode => videoId.hashCode;
 }
 
+// ─── Curated Playlist models (home feed) ────────────────────────────────────
+
 class CuratedPlaylist {
   final String id;
   final String title;
   final String thumbnailUrl;
   final String description;
 
-  CuratedPlaylist({
+  const CuratedPlaylist({
     required this.id,
     required this.title,
     required this.thumbnailUrl,
     required this.description,
   });
 
-  factory CuratedPlaylist.fromJson(Map<String, dynamic> json) {
-    return CuratedPlaylist(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      thumbnailUrl: json['thumbnailUrl'] as String,
-      description: json['description'] as String,
-    );
-  }
+  factory CuratedPlaylist.fromJson(Map<String, dynamic> json) =>
+      CuratedPlaylist(
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+      );
 }
 
 class CuratedPlaylistData extends CuratedPlaylist {
   final List<Track> songs;
 
-  CuratedPlaylistData({
+  const CuratedPlaylistData({
     required super.id,
     required super.title,
     required super.thumbnailUrl,
@@ -73,19 +115,14 @@ class CuratedPlaylistData extends CuratedPlaylist {
     required this.songs,
   });
 
-  factory CuratedPlaylistData.fromJson(Map<String, dynamic> json) {
-    return CuratedPlaylistData(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      thumbnailUrl: json['thumbnailUrl'] as String,
-      description: json['description'] as String,
-      songs: (json['songs'] as List).map((t) => Track(
-        videoId: t['videoId'] as String,
-        title: t['title'] as String,
-        artist: t['artist'] as String,
-        thumbnailUrl: t['thumbnailUrl'] as String,
-        duration: const Duration(seconds: 180),
-      )).toList(),
-    );
-  }
+  factory CuratedPlaylistData.fromJson(Map<String, dynamic> json) =>
+      CuratedPlaylistData(
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        songs: (json['songs'] as List<dynamic>? ?? [])
+            .map((t) => Track.fromJson(t as Map<String, dynamic>))
+            .toList(),
+      );
 }

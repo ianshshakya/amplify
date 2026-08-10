@@ -1,51 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
-import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'root_shell.dart';
 
-/// Shown first at app launch. Checks whether a saved token is still
-/// valid, then routes to either the logged-in app shell or the login
-/// screen — so returning users skip the login form entirely.
-class AuthGate extends StatefulWidget {
+/// Entry point that watches auth state and routes to login or main shell.
+class AuthGate extends ConsumerStatefulWidget {
   const AuthGate({super.key});
 
   @override
-  State<AuthGate> createState() => _AuthGateState();
+  ConsumerState<AuthGate> createState() => _AuthGateState();
 }
 
-class _AuthGateState extends State<AuthGate> {
+class _AuthGateState extends ConsumerState<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _bootstrap();
-  }
-
-  Future<void> _bootstrap() async {
-    final auth = context.read<AuthProvider>();
-    await auth.checkAuthState();
-
-    if (auth.status == AuthStatus.loggedIn && mounted) {
-      await context.read<PlaylistProvider>().loadUserData();
-    }
+    // Kick off auth check on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider.notifier).checkAuthState();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
 
-    switch (auth.status) {
-      case AuthStatus.checking:
-        return const Scaffold(
-          backgroundColor: AppColors.background,
-          body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        );
-      case AuthStatus.loggedIn:
-        return const RootShell();
-      case AuthStatus.loggedOut:
-        return const LoginScreen();
-    }
+    return switch (auth.status) {
+      AuthStatus.checking => const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      AuthStatus.loggedOut => const LoginScreen(),
+      AuthStatus.loggedIn => _LoggedInShell(),
+    };
   }
+}
+
+/// Triggers user data loading once on login, then shows the root shell.
+class _LoggedInShell extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_LoggedInShell> createState() => _LoggedInShellState();
+}
+
+class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(playlistProvider.notifier).loadUserData();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const RootShell();
 }

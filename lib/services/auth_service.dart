@@ -46,4 +46,14 @@ class AuthService {
   }
 
   Future<void> logout() => _tokenStorage.clearToken();
+
+  Future<AppUser> loginWithGoogle(String idToken) async {
+    final res = await _api.post(
+      '/auth/google',
+      auth: false,
+      body: {'idToken': idToken},
+    );
+    await _tokenStorage.saveToken(res['token'] as String);
+    return AppUser.fromJson(res['user'] as Map<String, dynamic>);
+  }
 }
