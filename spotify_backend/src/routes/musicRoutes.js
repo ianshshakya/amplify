@@ -103,54 +103,40 @@ router.get('/stream/:songId', async (req, res) => {
     if (cached) return res.json({ url: cached });
 
     const videoUrl = `https://www.youtube.com/watch?v=${songId}`;
-    
     let streamUrl = null;
     let lastError = null;
 
-    // 1. Try Invidious API (Very resilient to datacenter blocks)
-    const invidiousInstances = [
-      'https://inv.tux.pizza',
-      'https://invidious.nerdvpn.de',
-      'https://invidious.lunar.icu',
-      'https://invidious.privacydev.net'
+    // Cobalt public API instances
+    const cobaltInstances = [
+      'https://api.cobalt.tools',
+      'https://co.wuk.sh'
     ];
-    
-    for (const instance of invidiousInstances) {
-      if (streamUrl) break;
+
+    for (const instance of cobaltInstances) {
       try {
-        const response = await fetch(`${instance}/api/v1/videos/${songId}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' }
+        const response = await fetch(`${instance}/api/json`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+          },
+          body: JSON.stringify({
+            url: videoUrl,
+            isAudioOnly: true,
+            aFormat: 'mp3'
+          })
         });
-        
+
         if (response.ok) {
           const data = await response.json();
-          // Invidious returns formatStreams (which contain video+audio or audio only)
-          // and adaptiveFormats (which contain separate audio tracks)
-          const formats = [...(data.adaptiveFormats || []), ...(data.formatStreams || [])];
-          
-          // Try to find the best audio-only stream (m4a or webm)
-          const audioFormats = formats.filter(f => f.type && f.type.startsWith('audio'));
-          if (audioFormats.length > 0) {
-            // Sort by bitrate highest to lowest
-            audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
-            streamUrl = audioFormats[0].url;
-          } else if (formats.length > 0) {
-            streamUrl = formats[0].url;
+          if (data.status === 'stream' || data.status === 'redirect') {
+            streamUrl = data.url;
+            break;
+          } else if (data.url) {
+            streamUrl = data.url;
+            break;
           }
-        }
-      } catch (err) {
-        lastError = err;
-      }
-    }
-
-    // 2. Fallback to @distube/ytdl-core (Built specifically to bypass bot detection on servers)
-    if (!streamUrl) {
-      try {
-        const ytdl = require('@distube/ytdl-core');
-        const info = await ytdl.getInfo(videoUrl);
-        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
-        if (format && format.url) {
-          streamUrl = format.url;
         }
       } catch (err) {
         lastError = err;
@@ -161,10 +147,10 @@ router.get('/stream/:songId', async (req, res) => {
       cacheSet(cacheKey, streamUrl, 60);
       res.json({ url: streamUrl });
     } else {
-      console.error('All extraction methods failed:', lastError?.message || lastError);
+      console.error('Cobalt API extraction failed:', lastError?.message || lastError);
       res.status(502).json({ 
         error: 'stream_unavailable', 
-        message: 'Could not bypass YouTube restrictions right now. Please try again later.' 
+        message: 'Could not fetch the song right now. Please try again later.' 
       });
     }
   } catch (error) {
