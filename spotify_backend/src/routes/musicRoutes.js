@@ -26,7 +26,14 @@ async function initYTMusic() {
 
 function getBestThumbnail(thumbnails) {
   if (!thumbnails || thumbnails.length === 0) return '';
-  return thumbnails[thumbnails.length - 1].url;
+  let url = thumbnails[thumbnails.length - 1].url;
+  if (url.includes('hqdefault.jpg')) {
+      url = url.replace('hqdefault.jpg', 'maxresdefault.jpg');
+  }
+  if (url.includes('=w')) {
+      url = url.replace(/=w\d+-h\d+/, '=w540-h540');
+  }
+  return url;
 }
 
 router.get('/search', async (req, res) => {

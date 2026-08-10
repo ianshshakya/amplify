@@ -189,7 +189,7 @@ class MusicService {
   /// This URL is a signed CDN URL that expires — do NOT cache it long-term.
   Future<String> getAudioStreamUrl(String videoId) async {
     final res = await _api.get('/music/stream/$videoId');
-    final url = res['streamUrl'] as String?;
+    final url = res['url'] as String?;
     if (url == null || url.isEmpty) {
       throw Exception('Backend returned null streamUrl for $videoId');
     }

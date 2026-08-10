@@ -12,6 +12,7 @@ const homeRoutes = require('./routes/homeRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json());
