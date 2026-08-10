@@ -3,78 +3,69 @@ const saavn = require('saavnapi').default;
 
 const router = express.Router();
 
-// Helper: map a full song object (from getSongByIds) to our Track format
-function songToTrack(song) {
-  const thumbnail =
-    (song.image || []).find(img => img.quality === '500x500')?.url ||
-    (song.image || []).slice(-1)[0]?.url ||
-    '';
+// ─── JioSaavn direct API helpers ─────────────────────────────────────────────
+// The saavnapi npm package has a bug in searchAll (passes [object Object] as query).
+// We call JioSaavn's internal API directly for search, and use saavnapi for stream URLs
+// since it correctly handles the DES decryption of encrypted_media_url.
 
-  const artist =
-    (song.artists?.primary || []).map(a => a.name).join(', ') ||
-    song.primaryArtists ||
-    'Unknown Artist';
+const SAAVN_API = 'https://www.jiosaavn.com/api.php';
+const SAAVN_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+  'Referer': 'https://www.jiosaavn.com/',
+  'Accept': 'application/json',
+};
 
+async function saavnSearch(query, limit = 20) {
+  const url = `${SAAVN_API}?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&q=${encodeURIComponent(query)}&n=${limit}&p=1`;
+  const res = await fetch(url, { headers: SAAVN_HEADERS });
+  const text = await res.text();
+  // JioSaavn occasionally wraps JSON in /**/
+  const json = text.startsWith('/**/') ? text.slice(4) : text;
+  const data = JSON.parse(json);
+  return data.results || [];
+}
+
+function mapSearchResult(song) {
+  // image comes as "150x150" URL — upgrade to 500x500
+  const image = (song.image || '').replace('150x150', '500x500');
+  const primaryArtists = song.more_info?.artistMap?.primary_artists || [];
+  const artist = primaryArtists.map(a => a.name).join(', ') || song.subtitle?.split(' - ')[0] || 'Unknown Artist';
   return {
     videoId: song.id,
-    title: song.name || song.title || 'Unknown',
+    title: song.title || 'Unknown',
     artist,
-    thumbnailUrl: thumbnail,
-    duration: typeof song.duration === 'number' ? song.duration : null,
+    thumbnailUrl: image,
+    duration: song.more_info?.duration ? parseInt(song.more_info.duration, 10) : null,
   };
 }
 
-// Helper: map a search result (from searchAll.songs.results) to our Track format
-function searchResultToTrack(song) {
-  const thumbnail =
-    (song.image || []).find(img => img.quality === '500x500')?.url ||
-    (song.image || []).slice(-1)[0]?.url ||
-    '';
+// ─── Routes ──────────────────────────────────────────────────────────────────
 
-  return {
-    videoId: song.id,
-    title: song.title || song.name || 'Unknown',
-    artist: song.primaryArtists || 'Unknown Artist',
-    thumbnailUrl: thumbnail,
-    duration: null,
-  };
-}
-
-// 1. Search using JioSaavn
+// 1. Search
 router.get('/search', async (req, res) => {
   try {
     const query = req.query.q;
-    if (!query) {
-      return res.status(400).json({ error: 'Missing search query' });
-    }
+    if (!query) return res.status(400).json({ error: 'Missing search query' });
 
-    // searchAll returns: { topQuery, songs, albums, artists, playlists }
-    // (no .data wrapper — the object IS the data)
-    const response = await saavn.search.searchAll({ query });
-    const songs = response?.songs?.results || [];
-
-    const results = songs.map(searchResultToTrack);
-    res.json(results);
+    const songs = await saavnSearch(query);
+    res.json(songs.map(mapSearchResult));
   } catch (error) {
-    console.error('Search error:', error);
+    console.error('Search error:', error.message);
     res.status(500).json({ error: 'Failed to search for songs.' });
   }
 });
 
-// 2. Stream using JioSaavn
+// 2. Stream — use saavnapi which correctly decrypts JioSaavn media URLs
 router.get('/stream/:songId', async (req, res) => {
   try {
     const { songId } = req.params;
-    if (!songId) {
-      return res.status(400).json({ error: 'Missing songId' });
-    }
+    if (!songId) return res.status(400).json({ error: 'Missing songId' });
 
-    // getSongByIds returns an array directly (no .data wrapper)
     const songArray = await saavn.songs.getSongByIds({ songIds: [songId] });
     const song = Array.isArray(songArray) ? songArray[0] : null;
 
     if (!song || !song.downloadUrl || song.downloadUrl.length === 0) {
-      return res.status(404).json({ error: 'Song not found or no download URL available' });
+      return res.status(404).json({ error: 'Song not found or no stream available' });
     }
 
     const urlList = song.downloadUrl;
@@ -89,7 +80,7 @@ router.get('/stream/:songId', async (req, res) => {
       duration: typeof song.duration === 'number' ? song.duration : 0,
     });
   } catch (error) {
-    console.error('Stream error:', error);
+    console.error('Stream error:', error.message);
     res.status(500).json({ error: 'Failed to get stream URL' });
   }
 });
