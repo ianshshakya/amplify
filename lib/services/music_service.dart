@@ -6,14 +6,9 @@ import '../models/lyrics.dart';
 import '../models/mood_category.dart';
 import 'api_client.dart';
 
-/// Central service for all YT Music data fetching.
-/// Talks to our Node.js backend proxy which handles the actual YT Music API calls.
-///
-/// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-/// ARCHITECTURE NOTE: The backend uses ytmusic-api (npm) for search/browse and
-/// youtube-dl-exec (yt-dlp) for stream URL extraction. Lyrics and mood categories
-/// use a Python ytmusicapi sidecar on the backend when available.
-/// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/// Central service for all music data fetching.
+/// Talks to our Node.js backend which uses JioSaavn (saavnapi) for search
+/// and direct MP4 stream URL delivery.
 class MusicService {
   static final MusicService _instance = MusicService._internal();
   factory MusicService() => _instance;
@@ -23,12 +18,12 @@ class MusicService {
 
   // ─── Search ────────────────────────────────────────────────────────────────
 
-  /// Search YT Music for songs. Returns an empty list on any error.
+  /// Search JioSaavn for songs. Returns an empty list on any error.
   Future<List<Track>> search(String query) async {
     if (query.trim().isEmpty) return [];
     try {
       final results = await _api
-          .get('/music/search?q=${Uri.encodeQueryComponent(query)}&type=songs');
+          .get('/music/search?q=${Uri.encodeQueryComponent(query)}');
       if (results is! List) return [];
       return results
           .map((s) => _trackFromJson(s as Map<String, dynamic>))
@@ -43,28 +38,13 @@ class MusicService {
     if (query.trim().isEmpty) return [];
     try {
       final results = await _api.get(
-        '/music/search?q=${Uri.encodeQueryComponent(query)}&type=$type',
+        '/music/search?q=${Uri.encodeQueryComponent(query)}',
       );
       if (results is! List) return [];
-
-      switch (type) {
-        case 'songs':
-          return results
-              .map((s) => _trackFromJson(s as Map<String, dynamic>))
-              .toList();
-        case 'albums':
-          return results
-              .map((a) => Album.fromSummaryJson(a as Map<String, dynamic>))
-              .toList();
-        case 'artists':
-          return results
-              .map((a) => ArtistSummary.fromJson(a as Map<String, dynamic>))
-              .toList();
-        default:
-          return results
-              .map((s) => _trackFromJson(s as Map<String, dynamic>))
-              .toList();
-      }
+      // saavnapi returns songs only — always map as Track
+      return results
+          .map((s) => _trackFromJson(s as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -185,11 +165,11 @@ class MusicService {
 
   // ─── Stream URL ────────────────────────────────────────────────────────────
 
-  /// Get the direct audio stream URL from the backend (yt-dlp).
-  /// This URL is a signed CDN URL that expires — do NOT cache it long-term.
+  /// Get the direct audio stream URL from the JioSaavn backend.
+  /// Returns a stable MP4 CDN URL.
   Future<String> getAudioStreamUrl(String videoId) async {
     final res = await _api.get('/music/stream/$videoId');
-    final url = res['url'] as String?;
+    final url = res['streamUrl'] as String?;
     if (url == null || url.isEmpty) {
       throw Exception('Backend returned null streamUrl for $videoId');
     }
