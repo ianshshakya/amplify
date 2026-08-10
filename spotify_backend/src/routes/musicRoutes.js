@@ -1,88 +1,111 @@
 const express = require('express');
-const saavn = require('saavnapi').default;
+const { searchYouTube, getStreamUrl, getPlaylistTracks, getRelatedTracks } = require('../utils/ytdlp');
 
 const router = express.Router();
 
-// ─── JioSaavn direct API helpers ─────────────────────────────────────────────
-// The saavnapi npm package has a bug in searchAll (passes [object Object] as query).
-// We call JioSaavn's internal API directly for search, and use saavnapi for stream URLs
-// since it correctly handles the DES decryption of encrypted_media_url.
-
-const SAAVN_API = 'https://www.jiosaavn.com/api.php';
-const SAAVN_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-  'Referer': 'https://www.jiosaavn.com/',
-  'Accept': 'application/json',
-};
-
-async function saavnSearch(query, limit = 20) {
-  const url = `${SAAVN_API}?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&q=${encodeURIComponent(query)}&n=${limit}&p=1`;
-  const res = await fetch(url, { headers: SAAVN_HEADERS });
-  const text = await res.text();
-  // JioSaavn occasionally wraps JSON in /**/
-  const json = text.startsWith('/**/') ? text.slice(4) : text;
-  const data = JSON.parse(json);
-  return data.results || [];
-}
-
-function mapSearchResult(song) {
-  // image comes as "150x150" URL — upgrade to 500x500
-  const image = (song.image || '').replace('150x150', '500x500');
-  const primaryArtists = song.more_info?.artistMap?.primary_artists || [];
-  const artist = primaryArtists.map(a => a.name).join(', ') || song.subtitle?.split(' - ')[0] || 'Unknown Artist';
-  return {
-    videoId: song.id,
-    title: song.title || 'Unknown',
-    artist,
-    thumbnailUrl: image,
-    duration: song.more_info?.duration ? parseInt(song.more_info.duration, 10) : null,
-  };
-}
-
-// ─── Routes ──────────────────────────────────────────────────────────────────
-
-// 1. Search
+// 1. Search (using yt-dlp)
 router.get('/search', async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: 'Missing search query' });
 
-    const songs = await saavnSearch(query);
-    res.json(songs.map(mapSearchResult));
+    const songs = await searchYouTube(query, 20);
+    res.json(songs);
   } catch (error) {
     console.error('Search error:', error.message);
     res.status(500).json({ error: 'Failed to search for songs.' });
   }
 });
 
-// 2. Stream — use saavnapi which correctly decrypts JioSaavn media URLs
+// 2. Stream (using yt-dlp)
 router.get('/stream/:songId', async (req, res) => {
   try {
     const { songId } = req.params;
     if (!songId) return res.status(400).json({ error: 'Missing songId' });
 
-    const songArray = await saavn.songs.getSongByIds({ songIds: [songId] });
-    const song = Array.isArray(songArray) ? songArray[0] : null;
+    const bestUrl = await getStreamUrl(songId);
 
-    if (!song || !song.downloadUrl || song.downloadUrl.length === 0) {
+    if (!bestUrl) {
       return res.status(404).json({ error: 'Song not found or no stream available' });
     }
 
-    const urlList = song.downloadUrl;
-    const bestUrl =
-      urlList.find(u => u.quality === '320kbps')?.url ||
-      urlList.find(u => u.quality === '160kbps')?.url ||
-      urlList.find(u => u.quality === '96kbps')?.url ||
-      urlList[urlList.length - 1]?.url;
-
     res.json({
       streamUrl: bestUrl,
-      duration: typeof song.duration === 'number' ? song.duration : 0,
+      // We don't get duration from -g, but the app already knows it from the search results
+      duration: 0, 
     });
   } catch (error) {
     console.error('Stream error:', error.message);
     res.status(500).json({ error: 'Failed to get stream URL' });
   }
+});
+
+// 3. Album
+router.get('/album/:id', async (req, res) => {
+  try {
+    // If it's a YouTube playlist ID, fetch it directly
+    // If not, we just search YouTube for it
+    const playlistId = req.params.id;
+    let tracks = [];
+    if (playlistId.startsWith('PL') || playlistId.startsWith('OL') || playlistId.startsWith('RD')) {
+      tracks = await getPlaylistTracks(`https://www.youtube.com/playlist?list=${playlistId}`, 30);
+    } else {
+      tracks = await searchYouTube(`${playlistId} album`, 20);
+    }
+    
+    res.json({
+      id: playlistId,
+      title: 'Album',
+      artistName: 'Unknown',
+      year: '',
+      thumbnailUrl: tracks.length > 0 ? tracks[0].thumbnailUrl : '',
+      totalDuration: 'Unknown',
+      tracks: tracks
+    });
+  } catch (error) {
+    console.error('Album error:', error.message);
+    res.status(500).json({ error: 'Failed to get album' });
+  }
+});
+
+// 4. Artist
+router.get('/artist/:id', async (req, res) => {
+  try {
+    // We just return a fallback artist with top songs from YouTube search
+    const tracks = await searchYouTube(`${req.params.id} songs`, 10);
+    res.json({
+      id: req.params.id,
+      name: req.params.id,
+      imageUrl: tracks.length > 0 ? tracks[0].thumbnailUrl : '',
+      followerCount: 'Unknown',
+      isVerified: false,
+      biography: '',
+      topSongs: tracks,
+      albums: [],
+      singles: [],
+      relatedArtists: []
+    });
+  } catch (error) {
+    console.error('Artist error:', error.message);
+    res.status(500).json({ error: 'Failed to get artist' });
+  }
+});
+
+// 5. Watch Next (Radio)
+router.get('/watch/:id', async (req, res) => {
+  try {
+    const tracks = await getRelatedTracks(req.params.id, 20);
+    res.json(tracks);
+  } catch (error) {
+    console.error('Watch next error:', error.message);
+    res.status(500).json({ error: 'Failed to get related tracks' });
+  }
+});
+
+// 6. Lyrics
+router.get('/lyrics/:id', async (req, res) => {
+  // YT-dlp doesn't easily extract lyrics, so we return null/404 to let the app handle it gracefully
+  res.status(404).json({ error: 'Lyrics not supported in YT pipeline yet' });
 });
 
 module.exports = router;

@@ -40,6 +40,14 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
-connectDB().then(() => {
+
+const { downloadYtDlp } = require('./utils/ytdlp');
+
+async function startServer() {
+  await downloadYtDlp().catch(err => console.error('Failed to init yt-dlp:', err));
+  await connectDB();
+  
   app.listen(PORT, HOST, () => console.log(`Server running on http://${HOST}:${PORT}`));
-});
+}
+
+startServer();
