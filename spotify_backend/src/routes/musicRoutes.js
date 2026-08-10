@@ -104,34 +104,42 @@ router.get('/stream/:songId', async (req, res) => {
 
     const videoUrl = `https://www.youtube.com/watch?v=${songId}`;
     
-    const clients = ['android', 'web'];
-    const cookiesPath = '/etc/secrets/cookies.txt';
-    const hasCookies = fs.existsSync(cookiesPath);
+    // We will use public Piped API instances to act as a proxy.
+    // This entirely bypasses YouTube's datacenter IP block because the Piped servers handle the extraction!
+    const pipedInstances = [
+      'https://pipedapi.kavin.rocks',
+      'https://api.piped.projectsegfau.lt',
+      'https://pipedapi.in.projectsegfau.lt',
+      'https://pipedapi.smnz.de'
+    ];
     
     let streamUrl = null;
     let lastError = null;
 
-    for (const client of clients) {
+    for (const instance of pipedInstances) {
       try {
-        const args = {
-          dumpSingleJson: true,
-          noWarnings: true,
-          noCheckCertificate: true,
-          youtubeSkipDashManifest: true,
-          format: 'bestaudio',
-          extractorArgs: `youtube:player_client=${client}`
-        };
-        if (hasCookies) {
-          args.cookies = cookiesPath;
+        const response = await fetch(`${instance}/streams/${songId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+          }
+        });
+        
+        if (!response.ok) throw new Error(`Piped returned ${response.status}`);
+        
+        const data = await response.json();
+        
+        // Find the best audio stream
+        if (data.audioStreams && data.audioStreams.length > 0) {
+          // Sort by bitrate to get the best quality
+          const bestAudio = data.audioStreams.sort((a, b) => b.bitrate - a.bitrate)[0];
+          if (bestAudio && bestAudio.url) {
+            streamUrl = bestAudio.url;
+            break; // Success!
+          }
         }
-
-        const info = await youtubedl(videoUrl, args);
-        streamUrl = info.url;
-        if (streamUrl) break; // success
       } catch (err) {
         lastError = err;
-        // Wait before trying next client
-        await new Promise(r => setTimeout(r, 1000));
+        // Try the next instance
       }
     }
 
@@ -139,10 +147,10 @@ router.get('/stream/:songId', async (req, res) => {
       cacheSet(cacheKey, streamUrl, 60);
       res.json({ url: streamUrl });
     } else {
-      console.error('Stream error (yt-dlp blocked):', lastError?.message || lastError);
+      console.error('All Piped instances failed:', lastError?.message || lastError);
       res.status(502).json({ 
         error: 'stream_unavailable', 
-        message: 'YouTube blocked the request. Please try another track or try again later.' 
+        message: 'Could not bypass YouTube restrictions right now. Please try again later.' 
       });
     }
   } catch (error) {

@@ -37,28 +37,43 @@ class ApiClient {
   }
 
   Future<dynamic> get(String path) async {
-    final res = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+      ).timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(500, 'Connection failed or timed out. Please try again.');
+    }
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body, bool auth = true}) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? {}),
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(auth: auth),
+        body: jsonEncode(body ?? {}),
+      ).timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(500, 'Connection failed or timed out. Please try again.');
+    }
   }
 
   Future<dynamic> delete(String path) async {
-    final res = await http.delete(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
-    );
-    return _handleResponse(res);
+    try {
+      final res = await http.delete(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+      ).timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(500, 'Connection failed or timed out. Please try again.');
+    }
   }
 
   dynamic _handleResponse(http.Response res) {

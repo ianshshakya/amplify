@@ -6,6 +6,7 @@ import '../models/track.dart';
 import '../services/music_service.dart';
 import '../services/offline_service.dart';
 import '../services/user_data_service.dart';
+import '../services/api_client.dart';
 
 enum RepeatMode { off, all, one }
 enum PlaybackStatus { idle, loading, playing, paused, error }
@@ -58,7 +59,6 @@ class PlayerState {
 
 /// Central playback controller.
 /// Uses Riverpod StateNotifier so any ConsumerWidget can listen to the player state.
-import '../services/api_client.dart';
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final AudioPlayer _audioPlayer = AudioPlayer();

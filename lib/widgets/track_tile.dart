@@ -30,7 +30,7 @@ class TrackTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
     final isCurrentTrack = playerState.currentTrack?.videoId == track.videoId;
-    final isPlaying = isCurrentTrack && playerState.isPlaying;
+    final isPlaying = isCurrentTrack && playerState.status == PlaybackStatus.playing;
     final isLiked = ref.watch(playlistProvider).isLiked(track);
 
     return ListTile(
