@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ytdl.store</title>
+    <style type="text/css">
+        .loader-container {
+            display: none;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 11px;
+            height: 11px;
+            animation: spin 2s linear infinite;
+        }
+
+        .mmodal {
+            display: none;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            right: 0;
+            max-width: 100%;
+            left: 0;
+            z-index: 1050;
+            -webkit-overflow-scrolling: touch;
+            outline: 0;
+        }
+
+        .modal-dialog {
+            position: relative;
+            width: auto;
+            margin: 10px;
+        }
+
+        .mfade.in {
+            opacity: 1;
+        }
+
+        .mfade {
+            opacity: 0;
+            -webkit-transition: opacity .15s linear;
+            -o-transition: opacity .15s linear;
+            transition: opacity .15s linear;
+        }
+
+        .modal-backdrop.mfade {
+            opacity: 0;
+            filter: alpha(opacity=0);
+        }
+
+        .modal-backdrop.in {
+            opacity: .5;
+            filter: alpha(opacity=50);
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1040;
+            background-color: #000;
+        }
+
+        .mmodal.mfade .modal-dialog {
+            -webkit-transform: translate(0, -25%);
+            -ms-transform: translate(0, -25%);
+            -o-transform: translate(0, -25%);
+            transform: translate(0, -25%);
+            -webkit-transition: -webkit-transform 0.3s ease-out;
+            -o-transition: -o-transform 0.3s ease-out;
+            transition: transform 0.3s ease-out;
+        }
+
+        .mmodal.in .modal-dialog {
+            -webkit-transform: translate(0, 0);
+            -ms-transform: translate(0, 0);
+            -o-transform: translate(0, 0);
+            transform: translate(0, 0);
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            border: 1px solid #999;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            -webkit-box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+            -webkit-background-clip: padding-box;
+            background-clip: padding-box;
+            outline: 0;
+        }
+
+        .notice,
+        .gbnotice {
+            background: #ff8caf3d;
+            color: red;
+            width: 100%;
+            border-radius: 5px;
+            padding: 5px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .subnotice {
+            color: red;
+            width: 100%;
+            border-radius: 5px;
+            padding: 5px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .altwrap #mp3Frame,
+        .altwrap #mp4Frame {
+            display: block;
+            width: 120px;
+            height: 40px;
+            border-radius: 5px;
+            margin: 0 auto;
+        }
+
+        .notice a,
+        .gbnotice a {
+            color: blue;
+        }
+
+        .modal-header {
+            padding: 15px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+        }
+
+        .close {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 1;
+            text-shadow: 0 1px 0 #fff;
+            opacity: .2;
+            filter: alpha(opacity=20);
+        }
+
+        button.close {
+            position: fixed;
+            right: 15px;
+            padding: 0;
+            cursor: pointer;
+            background: transparent;
+            border: 0;
+            -webkit-appearance: none;
+        }
+
+        .modal-header .close {
+            margin-top: -2px;
+        }
+
+        h3.model_head {
+            font-size: 16px;
+            padding: 0px 10px 0 0;
+            margin: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+
+        .modal-header:before,
+        .modal-footer:before,
+        .modal-header:after,
+        .modal-footer:before {
+            content: " ";
+            display: table;
+        }
+
+        .modal-header:after,
+        .modal-footer:after {
+            clear: both;
+        }
+
+        .modal-body {
+            position: relative;
+            padding: 15px;
+        }
+
+        .has-feedback {
+            position: relative;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-bottom: 0;
+            font-weight: normal;
+            text-align: center;
+            vertical-align: middle;
+            -ms-touch-action: manipulation;
+            touch-action: manipulation;
+            cursor: pointer;
+            background-image: none;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 16px;
+            line-height: 1.42857143;
+            border-radius: 4px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .btn-success {
+            color: #fff;
+            background-color:
+                #5cb85c            ;
+            text-decoration: none;
+            border-color:
+                #5cb85c            ;
+        }
+
+        p.text-left {
+            text-align: left !important;
+        }
+
+        .modal-footer {
+            padding: 15px;
+            text-align: right;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .btn-default {
+            color: #333;
+            background-color: #fff;
+            border-color: #ccc;
+        }
+
+        .progress_wrap {
+            height: 30px;
+            width: 100%;
+            border-radius: .375rem;
+            --tw-bg-opacity: 1;
+            background-color: rgb(240 173 78 / var(--tw-bg-opacity));
+        }
+
+        .progress-bar {
+            --tw-bg-opacity: 1;
+            background-color: rgb(92 184 92 / var(--tw-bg-opacity));
+            height: 30px;
+            --tw-text-opacity: 1;
+            color: rgb(255 255 255 / var(--tw-text-opacity));
+        }
+
+        .progress-bar>span {
+            background-color:
+                #5cb85c            ;
+            display: block;
+            height: 100%;
+            position: relative;
+            transition: .5s linear;
+            -webkit-transition: .5s linear;
+            padding-left: .5rem;
+            padding-right: .5rem;
+        }
+
+        .progress-bar>span:after {
+            animation: stripes-move 1s linear infinite;
+            -webkit-animation: stripes-move 1s linear infinite;
+            background-image: linear-gradient(-45deg, hsla(0, 0%, 100%, .2) 25%, transparent 0, transparent 50%, hsla(0, 0%, 100%, .2) 0, hsla(0, 0%, 100%, .2) 75%, transparent 0, transparent);
+            background-size: 50px 50px;
+            bottom: 0;
+            height: 30px;
+            content: "";
+            left: 0;
+            overflow: hidden;
+            position: absolute;
+            right: 0;
+            top: 0;
+            z-index: 1;
+            color: white;
+            -webkit-animation: progress-bar-stripes 2s linear infinite;
+            /* Safari and Chrome */
+            -moz-animation: progress-bar-stripes 2s linear infinite;
+            /* Firefox */
+            -o-animation: progress-bar-stripes 2s linear infinite;
+            /* Opera */
+            animation: progress-bar-stripes 2s linear infinite;
+            /* background-color:; */
+        }
+
+        @-webkit-keyframes progress-bar-stripes {
+            from {
+                background-position: 40px 0;
+            }
+
+            to {
+                background-position: 0 0;
+            }
+        }
+
+        @-moz-keyframes progress-bar-stripes {
+            from {
+                background-position: 40px 0;
+            }
+
+            to {
+                background-position: 0 0;
+            }
+        }
+
+        @-o-keyframes progress-bar-stripes {
+            from {
+                background-position: 40px 0;
+            }
+
+            to {
+                background-position: 0 0;
+            }
+        }
+
+        @keyframes progress-bar-stripes {
+            from {
+                background-position: 40px 0;
+            }
+
+            to {
+                background-position: 0 0;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .modal-dialog {
+                width: 600px;
+                margin: 30px auto;
+            }
+
+            .modal-content {
+                -webkit-box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .nav-tab {
+                display: block;
+            }
+
+            .altwrap #mp3Frame,
+            .altwrap #mp4Frame {
+                width: 120px;
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <style type="text/css">
+        body {
+            font-size: 16px;
+            font-family: Roboto, sans-serif;
+            font-weight: 300;
+            line-height: 1.6;
+        }
+
+        * {
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+
+        *:before,
+        *:after {
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+        }
+
+        .container {
+            margin-right: auto;
+            margin-left: auto;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        .container {
+            padding: 0;
+        }
+
+        .clearfix:before,
+        .clearfix:after,
+        .dl-horizontal dd:before,
+        .dl-horizontal dd:after,
+        .container:before,
+        .container:after,
+        .container-fluid:before,
+        .container-fluid:after,
+        .row:before,
+        .row:after,
+        .form-horizontal .form-group:before,
+        .form-horizontal .form-group:after,
+        .btn-toolbar:before,
+        .btn-toolbar:after,
+        .btn-group-vertical>.btn-group:before,
+        .btn-group-vertical>.btn-group:after,
+        .nav:before,
+        .nav:after,
+        .navbar:before,
+        .navbar:after,
+        .navbar-header:before,
+        .navbar-header:after,
+        .navbar-collapse:before,
+        .navbar-collapse:after,
+        .pager:before,
+        .pager:after,
+        .panel-body:before,
+        .panel-body:after,
+        .modal-header:before,
+        .modal-header:after,
+        .modal-footer:before,
+        .modal-footer:after {
+            content: " ";
+            display: table;
+        }
+
+        .clearfix:after,
+        .dl-horizontal dd:after,
+        .container:after,
+        .container-fluid:after,
+        .row:after,
+        .form-horizontal .form-group:after,
+        .btn-toolbar:after,
+        .btn-group-vertical>.btn-group:after,
+        .nav:after,
+        .navbar:after,
+        .navbar-header:after,
+        .navbar-collapse:after,
+        .pager:after,
+        .panel-body:after,
+        .modal-header:after,
+        .modal-footer:after {
+            clear: both;
+        }
+
+        /* div#spinner {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            flex-direction: row;
+            margin-top: 100px;
+        } */
+
+        .panel-default {
+            border-color: #ddd;
+        }
+
+        .m-b-0 {
+            margin-bottom: 0 !important;
+        }
+
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 80px 0;
+            border-bottom: 1px solid #dcdfe4;
+        }
+
+        .hero-homepage.hero {
+            padding: 30px 0;
+            overflow: hidden;
+            border-bottom: 0;
+        }
+
+        #result {
+            max-width: 800px;
+            margin: 20px auto 0;
+        }
+
+        .row {
+            margin-left: -15px;
+            margin-right: -15px;
+        }
+
+        .col-sm-5,
+        .col-md-5,
+        .col-sm-7,
+        .col-md-7 {
+            position: relative;
+            min-height: 1px;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        .col-xs-12 {
+            float: left;
+        }
+
+        .col-xs-12 {
+            width: 100%;
+        }
+
+        .thumbnail {
+            display: block;
+            padding: 4px;
+            margin-bottom: 22px;
+            line-height: 1.42857143;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            -webkit-transition: border .2s ease-in-out;
+            -o-transition: border .2s ease-in-out;
+            transition: border .2s ease-in-out;
+        }
+
+        .thumbnail {
+            margin: 0 auto;
+            vertical-align: middle;
+            border: 0;
+        }
+
+        #result .thumbnail.cover {
+            padding-top: 0;
+            position: relative;
+        }
+
+        span.time {
+            background: #000 none repeat scroll 0 0;
+            bottom: 0;
+            color: #fff;
+            font-size: 12px;
+            bottom: 5px;
+            line-height: 16px;
+            padding: 0 5px;
+            position: absolute;
+            right: 5px;
+        }
+
+        img {
+            border: 0;
+        }
+
+        img {
+            vertical-align: middle;
+        }
+
+        .img-responsive,
+        .thumbnail>img,
+        .thumbnail a>img,
+        .carousel-inner>.item>img,
+        .carousel-inner>.item>a>img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .thumbnail>img,
+        .thumbnail a>img {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .thumbnail .caption {
+            padding: 9px;
+            color: #333;
+        }
+
+        .thumbnail .caption {
+            padding: 9px 0;
+            overflow: hidden;
+        }
+
+        b,
+        strong {
+            font-weight: bold;
+        }
+
+        ul,
+        ol {
+            margin-top: 0;
+            margin-bottom: 11px;
+        }
+
+        .nav {
+            margin-bottom: 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .nav-tabs {
+            border-bottom: 1px solid #ddd;
+        }
+
+        .nav>li {
+            position: relative;
+            display: block;
+        }
+
+        .nav-tabs>li {
+            float: left;
+            margin-bottom: -1px;
+        }
+
+        a {
+            background-color: transparent;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .nav>li>a {
+            position: relative;
+            display: block;
+            padding: 10px 15px;
+        }
+
+        .nav-tabs>li>a {
+            margin-right: 2px;
+            line-height: 1.42857143;
+            border: 1px solid transparent;
+            border-radius: 2px 2px 0 0;
+            color: #555;
+            padding: 10px 20px 11px;
+            transition: background-color .2s linear 0;
+            font-weight: 700;
+        }
+
+        .nav-tabs>li.active>a,
+        .nav-tabs>li.active>a:hover,
+        .nav-tabs>li.active>a:focus {
+            color: #555;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-bottom-color: transparent;
+            cursor: default;
+        }
+
+        .nav-tabs>li.active>a,
+        .nav-tabs>li.active>a:hover,
+        .nav-tabs>li.active>a:focus {
+            color:
+                #c10841            ;
+            background-color: #eee;
+        }
+
+        svg:not(:root) {
+            overflow: hidden;
+        }
+
+        .tab-content>.tab-pane {
+            display: none;
+        }
+
+        .tab-content>.active {
+            display: block;
+        }
+
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            background-color: transparent;
+        }
+
+        .table {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 22px;
+            border: 1px solid #ddd;
+        }
+
+        td,
+        th {
+            padding: 0;
+        }
+
+        th {
+            text-align: left;
+        }
+
+        .table>thead>tr>th,
+        .table>tbody>tr>th,
+        .table>thead>tr>td,
+        .table>tbody>tr>td {
+            padding: 8px;
+            line-height: 1.42857143;
+            vertical-align: top;
+            border-top: 1px solid #ddd;
+        }
+
+        .table>thead>tr>th {
+            vertical-align: bottom;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .table-bordered>thead>tr>th,
+        .table-bordered>tbody>tr>th,
+        .table-bordered>thead>tr>td,
+        .table-bordered>tbody>tr>td {
+            border: 1px solid #ddd;
+        }
+
+        .table-bordered>thead>tr>th,
+        .table-bordered>thead>tr>td {
+            border-bottom-width: 2px;
+        }
+
+        .table>thead>tr>th {
+            font-size: 12px;
+            font-weight: 400;
+            text-align: left;
+        }
+
+        .table>thead>tr>th,
+        .table>tbody>tr>td {
+            padding: 20px;
+            text-align: left;
+            border-bottom: 1px solid #dcdfe4;
+            border-top: 0;
+        }
+
+        .table>caption+thead>tr:first-child>th,
+        .table>colgroup+thead>tr:first-child>th,
+        .table>thead:first-child>tr:first-child>th,
+        .table>caption+thead>tr:first-child>td,
+        .table>colgroup+thead>tr:first-child>td,
+        .table>thead:first-child>tr:first-child>td {
+            border-top: 0;
+        }
+
+        .tab-content .table-bordered {
+            border-top: 0;
+        }
+
+        .label {
+            display: inline;
+            padding: .2em .6em .3em;
+            font-size: 75%;
+            font-weight: bold;
+            line-height: 1;
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: .25em;
+        }
+
+        .label-primary {
+            background-color: #337ab7;
+        }
+
+        button,
+        input,
+        optgroup,
+        select,
+        textarea {
+            color: inherit;
+            font: inherit;
+            margin: 0;
+        }
+
+        button {
+            overflow: visible;
+            text-transform: none;
+            -webkit-appearance: button;
+            cursor: pointer;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-bottom: 0;
+            font-weight: normal;
+            text-align: center;
+            vertical-align: middle;
+            -ms-touch-action: manipulation;
+            touch-action: manipulation;
+            cursor: pointer;
+            background-image: none;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 16px;
+            line-height: 1.42857143;
+            border-radius: 4px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .btn-success {
+            color: #fff;
+            background-color:
+                #5cb85c            ;
+            border-color:
+                #5cb85c            ;
+        }
+
+        #result .tab-content .btn {
+            width: 100%;
+        }
+
+        .col-sm-5,
+        .col-sm-7 {
+            float: left;
+        }
+
+        .col-sm-5 {
+            width: 41.66666667%;
+        }
+
+        .col-sm-7 {
+            width: 58.33333333%;
+        }
+
+        .col-md-5,
+        .col-md-7 {
+            float: left;
+        }
+
+        @media (max-width: 767px) {
+            .container>.panel {
+                border-radius: 0;
+            }
+
+            .hero-homepage.hero {
+                padding: 10px 0;
+            }
+
+            #result {
+                margin: 10px auto 0;
+            }
+
+            .col-xs-12 {
+                width: 100%;
+            }
+
+            .nav-tabs>li>a {
+                padding: 10px 10px 11px;
+            }
+
+            .table>thead>tr>th,
+            .table>tbody>tr>td {
+                padding: 10px 5px;
+                vertical-align: middle;
+            }
+        }
+
+        @media (max-width: 425px) {
+
+            .altwrap #mp3Frame,
+            .altwrap #mp4Frame {
+                width: 120px;
+            }
+
+            #spinner .resskel {
+                width: 100% !important;
+            }
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%)
+            }
+        }
+    </style>
+    <script>
+        if (window.self === window.top) {
+            alert('You are not Authorized');
+            // window.open('https://obstructionclasses.com/uymp2arm?key=8e253a1aa078f28303a352850a98bee3', '_blank');
+        } 
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@iframe-resizer/child"></script>
+</head>
+
+<body style="min-height: 600px;">
+    <div class="container">
+        <section class="y2mate-download">
+            <div class="youtube-form d-flex">
+                <div class="form-data">
+                    <div id="search_result">
+                        <!-- <div class="spinner" id="spinner">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="125px" height="125px">
+                                <circle fill="none" stroke-opacity="1" stroke="#c10841"
+                                    stroke-width=".5" cx="100" cy="100" r="0">
+                                    <animate attributeName="r" calcMode="spline" dur="2.1" values="1;80" keyTimes="0;1"
+                                        keySplines="0 .2 .5 1" repeatCount="indefinite"></animate>
+                                    <animate attributeName="stroke-width" calcMode="spline" dur="2.1" values="0;25"
+                                        keyTimes="0;1" keySplines="0 .2 .5 1" repeatCount="indefinite"></animate>
+                                    <animate attributeName="stroke-opacity" calcMode="spline" dur="2.1" values="1;0"
+                                        keyTimes="0;1" keySplines="0 .2 .5 1" repeatCount="indefinite"></animate>
+                                </circle>
+                            </svg>
+                        </div> -->
+                        <div class="container-overflow-wrap">
+                            <div style="clear: both">
+                                <div class="container">
+                                    <div class="panel panel-default m-b-0">
+                                        <div class="panel-body">
+                                            <div class="div-form">
+                                                <div class="hero hero-homepage">
+                                                    <div class="tabs row" id="spinner">
+                                                        <div class="col-xs-12 col-sm-5 col-md-5">
+                                                            <input type="hidden" id="video_id">
+                                                            <div class="thumbnail cover">
+                                                                <div
+                                                                    style="width:100%;aspect-ratio:16/9;border-radius:8px;position:relative;overflow:hidden;background:#eee;">
+                                                                    <i
+                                                                        style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i>
+                                                                </div>
+                                                                <div class="caption text-left">
+                                                                    <span class="skeleton"
+                                                                        style="display:inline-block;width:80%;height:18px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xs-12 col-sm-7 col-md-7">
+                                                            <ul class="nav nav-tabs justify-content-start"
+                                                                id="selectTab" role="tablist">
+                                                                <li class="nav-item p-0" role="presentation">
+                                                                    <a class="nav-link" href="javascript:void(0)"
+                                                                        data-tab="other" data-toggle="tab">
+                                                                        <span class="skeleton"
+                                                                            style="display:inline-block;width:220px;height:28px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                    </a>
+                                                                </li>
+                                                            </ul>
+                                                            <div class="tab-content">
+                                                                <div class="tab-pane active in" id="mp3">
+                                                                    <table class="table table-bordered">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th><span class="skeleton"
+                                                                                        style="display:inline-block;width:90px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </th>
+                                                                                <th><span class="skeleton"
+                                                                                        style="display:inline-block;width: 50px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </th>
+                                                                                <th><span class="skeleton"
+                                                                                        style="display:inline-block;width:70px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td><span class="skeleton resskel"
+                                                                                        style="display:inline-block;width:160px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                                <td><span class="skeleton"
+                                                                                        style="display:inline-block;width: 50px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                                <td class="txt-center">
+                                                                                    <span class="skeleton resskel"
+                                                                                        style="display:inline-block;width:110px;height:32px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td><span class="skeleton resskel"
+                                                                                        style="display:inline-block;width:160px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                                <td><span class="skeleton"
+                                                                                        style="display:inline-block;width: 50px;height:14px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                                <td class="txt-center">
+                                                                                    <span class="skeleton resskel"
+                                                                                        style="display:inline-block;width:110px;height:32px;border-radius:6px;position:relative;overflow:hidden;background:#eee;"><i
+                                                                                            style="content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.2s infinite;"></i></span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="clearfix"></div>
+                                                    </div>
+                                                    <div id="result">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="mmodal mfade in" id="progress" tabindex="1" role="dialog" data-backdrop="static"
+            data-keyboard="false" aria-labelledby="exampleModalLabel" aria-hidden="false">
+            <div class="modal-backdrop mfade in" style="height: 417px;"></div>
+            <div class="modal-dialog" role="document" style="z-index:999999">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="model_head"></h3>
+                        <button type="button" class="close btn-download-close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" style="text-align:center">
+                        <div class="prog_wrap">
+                            <div id="process-waiting">
+                                <img async src="/images/loading.gif" class="m-t loading_img">
+                                <p class="p-t"><b>Please wait while the file is being prepared for downloading</b>
+                                </p>
+                            </div>
+
+                            <div class="progress_wrap">
+                                <div class="progress-bar" style="width:0px;">
+                                    <span class="progress-status">Preparing...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="process-result" style="display:none;">
+                            <div class="form-group has-success has-feedback">
+                                <a href="JavaScript:void(0)" rel="nofollow" type="button" download="" data-url=""
+                                    class="btn btn-success btn-download-link">
+                                    <svg class="downicon" xmlns="http://www.w3.org/2000/svg" width="15px" height="15px"
+                                        fill="#fff" viewBox="0 0 512 512">
+                                        <path
+                                            d="M480 352h-133.5l-45.25 45.25C289.2 409.3 273.1 416 256 416s-33.16-6.656-45.25-18.75L165.5 352H32c-17.67 0-32 14.33-32 32v96c0 17.67 14.33 32 32 32h448c17.67 0 32-14.33 32-32v-96C512 366.3 497.7 352 480 352zM432 456c-13.2 0-24-10.8-24-24c0-13.2 10.8-24 24-24s24 10.8 24 24C456 445.2 445.2 456 432 456zM233.4 374.6C239.6 380.9 247.8 384 256 384s16.38-3.125 22.62-9.375l128-128c12.49-12.5 12.49-32.75 0-45.25c-12.5-12.5-32.76-12.5-45.25 0L288 274.8V32c0-17.67-14.33-32-32-32C238.3 0 224 14.33 224 32v242.8L150.6 201.4c-12.49-12.5-32.75-12.5-45.25 0c-12.49 12.5-12.49 32.75 0 45.25L233.4 374.6z">
+                                        </path>
+                                    </svg>
+                                    <svg class="downloader" style="display:none;" xmlns="http://www.w3.org/2000/svg"
+                                        width="15" height="15" viewBox="0 0 38 38" stroke="#fff">
+                                        <g fill="none" fill-rule="evenodd">
+                                            <g transform="translate(1 1)" stroke-width="2">
+                                                <circle stroke-opacity=".5" cx="18" cy="18" r="18"></circle>
+                                                <path d="M36 18c0-9.94-8.06-18-18-18">
+                                                    <animateTransform attributeName="transform" type="rotate"
+                                                        from="0 18 18" to="360 18 18" dur="1s" repeatCount="indefinite">
+                                                    </animateTransform>
+                                                </path>
+                                            </g>
+                                        </g>
+                                    </svg>
+                                    <span>Download</span></a>
+
+                                <div class="notice">Wait 10 - 15 sec to start download</div>
+                                <!-- <div class="notice">If you are facing any issue in download Please Visit - <a
+                                        target="_blank"
+                                        href="https://yt1d.com/watch?v=">yt1d</a></div> -->
+                            </div>
+                        </div>
+                         <!-- <div class="subnotice">If you are facing any issue in download Please Click the button
+    below</div>
+<div class="altwrap"></div> -->                        <div id="share-place-download">
+                            <p class="text-left"> Thank you for using our service. If you could share our website with
+                                your friends, that would be a huge help. <strong>Thank you.</strong> </p>
+                            <p class="text-left">
+                                <b>Tip:</b> Insert "<b>sos</b>" before the word "youtube" in the link to download videos
+                                and mp3 files from YouTube as a faster way.
+                            </p>
+                            <div class="shownotice">
+                                                                    <!--  <iframe width="468" height="60" src="https://main.y2meta-uk.com/iframe/middle/"
+                                        sandbox="allow-scripts allow-same-origin allow-popups" scrolling="no"
+                                        style="overflow: hidden; border: none;"></iframe> -->
+                                                                </div>
+                            <p class="text-left"><img async alt="tip how to quick download youtube video mp3"
+                                    style="max-width: 100%" src="/images/tip-download-youtube.jpg"> </p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default btn-download-close"
+                            data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var elem = document.querySelector("#search_result");
+        var videoid = 'LUgpPmj6nR8';
+        var videodursec = ''
+        var process_data = document.querySelector("#spinner");
+        var main_data = document.querySelector("#result");
+        loadContent(videoid);
+        setTimeout(function () {
+            process_data.style.display = 'none';
+            process_data.innerHTML = '';
+            main_data.style.display = "block";
+        }, 1000);
+        function loadContent(videoid) {
+            var iframefirst = 'mp3';
+            var vidduration = '';
+            var rootviddur = '';
+            var process_data = document.querySelector("#spinner");
+            var main_data = document.querySelector("#result");
+            // process_data.style.display = "flex";
+            main_data.style.display = "none";
+
+            // process_data.style.display = "none";
+            // main_data.style.display = "block";
+            var mp4Urls = '';
+            var mp3Urls = '';
+            var title = '';
+            var rowurls = getdatafromC(videodursec);
+            mp4Urls = rowurls['mp4Urls'];
+            mp3Urls = rowurls['mp3Urls'];
+            var location = 'IN';
+
+            if (location === "GB" || location === "IT") {
+                window.open('https://hai8g.com/4/7130850', '_blank');
+                main_data.innerHTML = '<div class="gbnotice">We Discontiued our service.</div>';
+            } else {
+                var mp4table = '<table class="table table-bordered"><thead><tr><th>File type</th><th>Format</th><th>Action</th></tr></thead><tbody>' + mp4Urls + '</tbody></table>';
+                var mp3table = '<table class="table table-bordered"><thead><tr><th>File type</th><th>Format</th><th>Action</th></tr></thead><tbody>' + mp3Urls + '</tbody></table>';
+                if (iframefirst === 'mp4') {
+                    var downtable = '<div class="tabs row"><div class="col-xs-12 col-sm-5 col-md-5"><input type="hidden" id="video_id" value="' + videoid + '"><div class="thumbnail cover"><img src="https://i.ytimg.com/vi/' + videoid + '/0.jpg" alt="Youtube Downloader thumbnail"><div class="caption text-left"><b>' + title + '</b></div><span class="time">' + rootviddur + '</span></div></div><div class="col-xs-12 col-sm-7 col-md-7"><ul class="nav nav-tabs justify-content-start" id="selectTab" role="tablist"><li class="nav-item p-0 active" role="presentation"><a class="nav-link" href="javascript:void(0)" data-tab="mp4" data-toggle="tab"><svg style="width: 16px;height: auto;margin: -5px 5px 0 0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="currentColor" d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM559.1 99.8c10.4 5.6 16.9 16.4 16.9 28.2V384c0 11.8-6.5 22.6-16.9 28.2s-23 5-32.9-1.6l-96-64L416 337.1V320 192 174.9l14.2-9.5 96-64c9.8-6.5 22.4-7.2 32.9-1.6z"></path></svg>Video</a> </li><li class="nav-item p-0" role="presentation"><a class="nav-link" href="javascript:void(0)" data-tab="mp3" data-toggle="tab"><svg style="width: 16px;height: auto;margin: -5px 5px 0 0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v72V368c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V147L192 223.8V432c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V200 128c0-14.1 9.3-26.6 22.8-30.7l320-96c9.7-2.9 20.2-1.1 28.3 5z"></path></svg>Audio</a> </li><li class="nav-item p-0" role="presentation"><a class="nav-link" href="javascript:void(0)" data-tab="mp3" data-toggle="tab"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-plus" viewBox="0 0 16 16"><path d="M8.5 6a.5.5 0 0 0-1 0v1.5H6a.5.5 0 0 0 0 1h1.5V10a.5.5 0 0 0 1 0V8.5H10a.5.5 0 0 0 0-1H8.5V6z"></path><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"></path></svg> Other</a></li></ul><div class="tab-content"><div class="tab-pane fade active in" id="mp4">' + mp4table + ' </div><div class="tab-pane" id="mp3">' + mp3table + ' </div><div class="tab-pane fade" id="other"></div></div></div><div class="clearfix"></div>';
+                } else {
+                    var downtable = '<div class="tabs row"><div class="col-xs-12 col-sm-5 col-md-5"><input type="hidden" id="video_id" value="' + videoid + '"><div class="thumbnail cover"><img src="https://i.ytimg.com/vi/' + videoid + '/0.jpg" alt="Youtube Downloader thumbnail"><div class="caption text-left"><b>' + title + '</b></div><span class="time">' + rootviddur + '</span></div></div><div class="col-xs-12 col-sm-7 col-md-7"><ul class="nav nav-tabs justify-content-start" id="selectTab" role="tablist"><li class="nav-item p-0 active" role="presentation"> <a class="nav-link" href="javascript:void(0)" data-tab="mp3" data-toggle="tab"><svg style="width: 16px;height: auto;margin: -5px 5px 0 0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7v72V368c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V147L192 223.8V432c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6V200 128c0-14.1 9.3-26.6 22.8-30.7l320-96c9.7-2.9 20.2-1.1 28.3 5z"></path></svg>Audio</a> </li><li class="nav-item p-0" role="presentation"> <a class="nav-link" href="javascript:void(0)" data-tab="mp4" data-toggle="tab"><svg style="width: 16px;height: auto;margin: -5px 5px 0 0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="currentColor" d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM559.1 99.8c10.4 5.6 16.9 16.4 16.9 28.2V384c0 11.8-6.5 22.6-16.9 28.2s-23 5-32.9-1.6l-96-64L416 337.1V320 192 174.9l14.2-9.5 96-64c9.8-6.5 22.4-7.2 32.9-1.6z"></path></svg>Video</a> </li><li class="nav-item p-0" role="presentation"> <a class="nav-link" href="javascript:void(0)" data-tab="mp3" data-toggle="tab"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-plus" viewBox="0 0 16 16"><path d="M8.5 6a.5.5 0 0 0-1 0v1.5H6a.5.5 0 0 0 0 1h1.5V10a.5.5 0 0 0 1 0V8.5H10a.5.5 0 0 0 0-1H8.5V6z"></path><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"></path></svg> Other</a></li></ul><div class="tab-content"><div class="tab-pane fade" id="mp4">' + mp4table + ' </div><div class="tab-pane fade active in" id="mp3">' + mp3table + ' </div><div class="tab-pane fade" id="other"></div></div></div><div class="clearfix"></div>';
+                }
+                main_data.innerHTML = '';
+                // process_data.style.display = 'none';
+                main_data.innerHTML = downtable;
+            }
+
+        };
+
+        function getdatafromC(videodursec) {
+            if (videodursec < 3600) {
+                var mp4links = [
+                    { "size": "Auto", "f": "mp4", "q": "1080", "q_text": "1080", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "720", "q_text": "720", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "360", "q_text": "360", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "240", "q_text": "240", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "144", "q_text": "144", "k": "" }
+                ];
+            } else {
+                var mp4links = [
+                    { "size": "Auto", "f": "mp4", "q": "720", "q_text": "1080", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "720", "q_text": "720", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "360", "q_text": "360", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "240", "q_text": "240", "k": "" },
+                    { "size": "Auto", "f": "mp4", "q": "144", "q_text": "144", "k": "" }
+                ];
+            }
+
+            var mp3links = [
+                { "size": "Auto", "f": "mp3", "q": "320", "q_text": "320", "k": "" },
+                { "size": "Auto", "f": "mp3", "q": "256", "q_text": "256", "k": "" },
+                { "size": "Auto", "f": "mp3", "q": "128", "q_text": "128", "k": "" }
+            ];
+
+            var mp4Urls = '';
+            var mp3Urls = '';
+            const qualityOrder = {
+                "144p": 5,
+                "360p": 4,
+                "480p": 3,
+                "720p": 2,
+                "1080p": 1,
+                "auto": 6
+            };
+
+            const sortedVideos = Object.values(mp4links).sort((a, b) => {
+                return (qualityOrder[a.q] || Infinity) - (qualityOrder[b.q] || Infinity);
+            });
+
+            var title = 'Youtube Video';
+            $('.model_head').html(title);
+
+            $.each(sortedVideos, function (key, value) {
+                quality = value.q;
+                quality = quality.replace(/p$/, '');
+                rsize = value.size;
+                dwn_url = value.k;
+                mp4Urls += '<tr><td> ' + value.q_text + 'p (.mp4)</td><td>' + rsize + '</td><td class="txt-center"><button type="button"  data-note="' + quality + '" data-format="mp4" data-attr="' + dwn_url + '"  class="btn btn-success y2link-download custom"><svg xmlns="http://www.w3.org/2000/svg" width="15px" height="15px" fill="#fff" viewBox="0 0 512 512"><path d="M480 352h-133.5l-45.25 45.25C289.2 409.3 273.1 416 256 416s-33.16-6.656-45.25-18.75L165.5 352H32c-17.67 0-32 14.33-32 32v96c0 17.67 14.33 32 32 32h448c17.67 0 32-14.33 32-32v-96C512 366.3 497.7 352 480 352zM432 456c-13.2 0-24-10.8-24-24c0-13.2 10.8-24 24-24s24 10.8 24 24C456 445.2 445.2 456 432 456zM233.4 374.6C239.6 380.9 247.8 384 256 384s16.38-3.125 22.62-9.375l128-128c12.49-12.5 12.49-32.75 0-45.25c-12.5-12.5-32.76-12.5-45.25 0L288 274.8V32c0-17.67-14.33-32-32-32C238.3 0 224 14.33 224 32v242.8L150.6 201.4c-12.49-12.5-32.75-12.5-45.25 0c-12.49 12.5-12.49 32.75 0 45.25L233.4 374.6z"></path></svg>&nbsp;Download</button></td></tr>';
+            });
+
+            $.each(mp3links, function (key, value) {
+                quality = value.q;
+                rsize = value.size;
+                dwn_url = value.k;
+                mp3Urls += '<tr><td>  MP3 - ' + value.q_text + 'kbps</td><td>' + rsize + '</td><td class="txt-center"><button type="button"  data-note="' + quality + '" data-format="mp3" data-attr="' + dwn_url + '"  class="btn btn-success y2link-download custom"><svg xmlns="http://www.w3.org/2000/svg" width="15px" height="15px" fill="#fff" viewBox="0 0 512 512"><path d="M480 352h-133.5l-45.25 45.25C289.2 409.3 273.1 416 256 416s-33.16-6.656-45.25-18.75L165.5 352H32c-17.67 0-32 14.33-32 32v96c0 17.67 14.33 32 32 32h448c17.67 0 32-14.33 32-32v-96C512 366.3 497.7 352 480 352zM432 456c-13.2 0-24-10.8-24-24c0-13.2 10.8-24 24-24s24 10.8 24 24C456 445.2 445.2 456 432 456zM233.4 374.6C239.6 380.9 247.8 384 256 384s16.38-3.125 22.62-9.375l128-128c12.49-12.5 12.49-32.75 0-45.25c-12.5-12.5-32.76-12.5-45.25 0L288 274.8V32c0-17.67-14.33-32-32-32C238.3 0 224 14.33 224 32v242.8L150.6 201.4c-12.49-12.5-32.75-12.5-45.25 0c-12.49 12.5-12.49 32.75 0 45.25L233.4 374.6z"></path></svg>&nbsp;Download</button></td></tr>';
+            });
+
+            let array = {
+                mp3Urls: mp3Urls,
+                mp4Urls: mp4Urls,
+            }
+            return array;
+        }
+
+        $(document).ready(function () {
+            var videoId = 'LUgpPmj6nR8';
+
+            jQuery(document).on('click', '.btn-download-close', function () {
+                window.open('https://hai8g.com/4/7130850', '_blank');
+                jQuery('.mmodal').hide();
+            });
+
+            let currentController = null;
+            let tryagain = 0;
+            jQuery(document).on('click', '.y2link-download', function () {
+                if (currentController) {
+                    currentController.abort();
+                }
+
+                currentController = new AbortController();
+                const signal = currentController.signal;
+
+                $('.mmodal').show();
+                jQuery('.progress-status').text('5%');
+                $('.mmodal .progress-bar').css('width', '5%');
+                $('#process-result').hide();
+                $('.prog_wrap').show();
+                window.open('https://hai8g.com/4/7130850', '_blank');
+                var elemthis = $(this);
+                var vtype = elemthis.data('format');
+                var vqual = elemthis.data('note');
+                var customdown = elemthis.hasClass('custom');
+                var location = 'IN';
+                getdownulrfromc(elemthis, videoId, vtype, vqual, tryagain);
+                 if (vtype == 'mp3') {
+                    var altframe = '<iframe id="mp3Frame" src="https://iframe.y2meta-uk.com/download/mp3/?id=' + videoId + '" style="display: block;" scrolling="no"></iframe>';
+                } else {
+                    var altframe = '<iframe id="mp4Frame" src="https://iframe.y2meta-uk.com/download/mp4/?id=' + videoId + '" style="display: block;" scrolling="no"></iframe>';
+                }
+                setTimeout(function () {
+    $('.altwrap').html(altframe);
+}, 10000); 
+
+            });
+
+            function getdownulrfromc(elemthis, videoId, vtype, vqual, tryagain) {
+                var currentProgress = 0;
+                var adurl = 'https://hai8g.com/4/7130850';
+                $('.mmodal .progress-bar, .mmodal .progress-bar span').css('background-color', '#5cb85c');
+                $('.btn-download-link').attr({ 'data-url': '', 'href': 'javascript:void(0);' });
+                var progressInterval = setInterval(function () {
+                    currentProgress += 5;
+                    jQuery('.progress-status').text(currentProgress + '%');
+                    $('.mmodal .progress-bar').css('width', currentProgress + '%');
+                    // Check if progress reaches 100%
+                    if (currentProgress >= 100) {
+                        clearInterval(progressInterval); // Stop the interval
+                    }
+                }, 4000);
+                var validatekey = '';
+                aqual = (vtype === 'mp4') ? 128 : vqual;
+                vqual = (vtype === 'mp3') ? 720 : vqual;
+                fetch('https://cnv.cx/v2/sanity/key?id=' + videoId, {
+                    method: 'GET', // or simply omit the method as GET is the default
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Add any other headers if required
+                    }
+                })
+                    .then(response => response.json()) // Parse the JSON response
+                    .then(data => {
+                        validatekey = data.key;
+                        $.ajax({
+                            type: "POST",
+                            headers: {
+                                "Content-Type": "application/x-www-form-urlencoded",
+                                accept: "*/*",
+                                "key": validatekey,
+                            },
+                            dataType: "json",
+                            url: "https://cnv.cx/v2/converter",
+                            data: {
+                                link: 'https://youtu.be/' + videoId,
+                                format: vtype,
+                                audioBitrate: aqual,
+                                videoQuality: vqual,
+                                filenameStyle: "pretty",
+                                vCodec: 'h264'
+                            },
+                            success: function (obj) {
+                                // var obj = JSON.parse(response);
+                                if (obj && obj.url) {
+                                    dwn_url = obj.url;
+                                    adurl = 'https://hai8g.com/4/7130850';
+                                    load_download_box(dwn_url, adurl);
+                                    clearInterval(progressInterval);
+                                } else {
+                                    $('.mmodal .progress-bar, .mmodal .progress-bar span').css('background-color', '#b85c5c');
+                                    $('.mmodal .progress-bar').css('width', '100%');
+
+                                    dwn_url = 'https://conv.mp3youtube.cc/download/' + videoId;
+                                    load_download_box(dwn_url, adurl);
+                                    clearInterval(progressInterval);
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                jQuery('.progress-status').text('Please Try Again!');
+                                $('.mmodal .progress-bar').css('width', '100%');
+                                clearInterval(progressInterval);
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error); // Handle any errors
+                    });
+            }
+            function load_download_box(dwn_url, adurl) {
+                if (dwn_url.indexOf('https://conv.mp3youtube.cc/download/') === 0) {
+                    $('.btn-download-link').attr('data-url', dwn_url);
+                } else {
+                    let parsed = new URL(dwn_url);
+                    let base = parsed.origin + parsed.pathname;
+                    let query = parsed.search.substring(1);
+                    if (query.startsWith("id=")) {
+                        query = query.substring(3);
+                    }
+                    $('.btn-download-link').attr('href', 'javascript:void(0)');
+                    // $('.btn-download-link').attr('data-filename', filename).show();
+                    $('.btn-download-link').attr('data-base', base).show();
+                    $('.btn-download-link').attr('data-details', query).show();
+                }
+                var url1 = "https://masterlythehague.com/4/7afe9516756834c13b469a4a2dc9f4d5";
+                var url2 = "https://masterlythehague.com/4/7afe9516756834c13b469a4a2dc9f4d5";
+                var selectedUrl = (Math.random() < 0.5) ? url1 : url2;
+                $('.btn-download-link').attr('data-ads', selectedUrl);
+                // $('.btn-download-link').attr('download', '5_seconds.mp4');
+                $('.btn-download-link').find('span').text('Download');
+                $('.btn-download-link').find('svg.downicon').show();
+                $('.btn-download-link').find('svg.downloader').hide();
+                $('.prog_wrap').hide();
+                $('#process-result').show();
+            }
+
+            jQuery(document).on('click', '.btn-download-link', function () {
+                $('.btn-download-link').find('span').text('Downloading...');
+                $('.btn-download-link').find('svg.downicon').hide();
+                $('.btn-download-link').find('svg.downloader').show();
+                var dwwn_url = $(this).attr('data-url');
+                if (dwwn_url.indexOf('https://conv.mp3youtube.cc/download/') === 0) {
+                    window.open(dwwn_url, '_blank');
+                    // $('.notice a').click();
+                } else {
+                    var base = $(this).attr('data-base');
+                    var details = $(this).attr('data-details');
+                    var filename = $(this).attr('data-filename');
+                    var final = base + '/?id=' + details;
+                    var linkElement = document.createElement('a');
+                    linkElement.href = final;
+                    document.body.appendChild(linkElement);
+                    linkElement.click();
+                    setTimeout(function () {
+                        document.body.removeChild(linkElement);
+                    }, 1000);
+                    var ads = $(this).attr('data-ads');
+                    window.open(ads, '_blank');
+                }
+            });
+            jQuery(document).on('click', 'ul#selectTab li', function () {
+
+                var tab_id = $(this).find("a").attr('data-tab');
+
+                $('ul#selectTab li').removeClass("active");
+                $('.tab-pane').removeClass("active");
+
+                $(this).addClass("active");
+                $("#" + tab_id).addClass("active");
+            });
+        });
+        fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoid}&format=json`)
+            .then(response => response.json())  // Parse the JSON response
+            .then(data => {
+                // Get the <b> element inside the div with class "caption text-left"
+                var titleElement = document.querySelector('.caption.text-left b');
+
+                // Assign the title to the <b> element
+                titleElement.textContent = data.title;
+                document.querySelector('.model_head').innerHTML = data.title;
+            })
+            .catch(error => {
+                console.error('Error fetching video title:', error);
+                // If there's an error, you can set a default error message
+                var titleElement = document.querySelector('.caption.text-left b');
+                titleElement.textContent = '';
+            });
+    </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"69f4408983cf4442b95484a1a0e298e8","r":1}' crossorigin="anonymous"></script>
+</body>
+
+</html>

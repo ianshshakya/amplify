@@ -17,13 +17,10 @@ class ApiException implements Exception {
 /// Thin wrapper around http that adds the base URL, JSON encoding, and
 /// the Authorization header automatically when a token is stored.
 ///
-/// IMPORTANT: update [baseUrl] to point at your running backend.
-/// - Android emulator talking to a backend on your own machine: 10.0.2.2
-/// - iOS simulator: localhost works directly
-/// - Physical device: use your machine's LAN IP, e.g. http://192.168.1.5:5000
-/// - Deployed backend (Render/Railway): use that public URL instead
 class ApiClient {
-  static const String baseUrl = 'https://amplify-ycmb.onrender.com/api';
+  // If you are using the Android Emulator, you MUST change this back to 'http://10.0.2.2:5000/api'
+  // If you are using a real phone, change this to your PC's WiFi IP address (e.g. 192.168.1.X)
+  static const String baseUrl = 'http://10.77.236.84:5000/api';
 
   final TokenStorage _tokenStorage = TokenStorage();
 

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "playwright": "^1.62.1",
+    "youtube-dl-exec": "^3.1.12"
+  }
+}
