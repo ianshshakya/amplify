@@ -110,9 +110,8 @@ async function getStreamUrl(videoId) {
     const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
     const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
 
-    // Using android player client bypasses heavy JS deciphering and is much faster
-    // We use "ba/b" (best audio, fallback to best) because android client often only exposes combined mp4 format 18
-    const command = `"${exePath}" ${cookiesArg} --no-warnings --no-check-certificates --extractor-args "youtube:player_client=android" -g -f "ba/b" "https://www.youtube.com/watch?v=${videoId}"`;
+    // We use the default web client instead of android because Android client often rejects browser cookies on Datacenter IPs
+    const command = `"${exePath}" ${cookiesArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
     exec(command, { encoding: 'utf-8' }, (error, stdout, stderr) => {
       if (error) {
         return reject(error);
