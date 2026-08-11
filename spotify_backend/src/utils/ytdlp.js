@@ -7,6 +7,8 @@ const isMac = process.platform === 'darwin';
 const exeName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
 const exePath = path.join(__dirname, '..', '..', exeName);
 
+const https = require('https');
+
 async function downloadYtDlp() {
   if (fs.existsSync(exePath)) return;
   console.log(`⏳ Downloading latest yt-dlp for ${process.platform}...`);
@@ -15,15 +17,40 @@ async function downloadYtDlp() {
   if (isWin) downloadName = 'yt-dlp.exe';
   if (isMac) downloadName = 'yt-dlp_macos';
 
-  const res = await fetch(`https://github.com/yt-dlp/yt-dlp/releases/latest/download/${downloadName}`);
-  if (!res.ok) throw new Error(`Failed to download yt-dlp: ${res.statusText}`);
-  const buffer = await res.arrayBuffer();
-  fs.writeFileSync(exePath, Buffer.from(buffer));
-  
-  if (!isWin) {
-    fs.chmodSync(exePath, 0o755); // Make it executable on Linux/Mac
-  }
-  console.log('✅ yt-dlp downloaded and ready!');
+  const url = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${downloadName}`;
+
+  return new Promise((resolve, reject) => {
+    // Github releases redirect to objects.githubusercontent.com, so we need to follow redirects
+    const downloadFile = (downloadUrl) => {
+      https.get(downloadUrl, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          return downloadFile(response.headers.location);
+        }
+        if (response.statusCode !== 200) {
+          return reject(new Error(`Failed to download yt-dlp: HTTP ${response.statusCode}`));
+        }
+
+        const fileStream = fs.createWriteStream(exePath);
+        response.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+          fileStream.close();
+          if (!isWin) {
+            fs.chmodSync(exePath, 0o755); // Make it executable on Linux/Mac
+          }
+          console.log('✅ yt-dlp downloaded and ready!');
+          resolve();
+        });
+
+        fileStream.on('error', (err) => {
+          fs.unlink(exePath, () => {});
+          reject(err);
+        });
+      }).on('error', reject);
+    };
+
+    downloadFile(url);
+  });
 }
 
 /**
