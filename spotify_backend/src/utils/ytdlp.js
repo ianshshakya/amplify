@@ -9,6 +9,24 @@ const exePath = path.join(__dirname, '..', '..', exeName);
 
 const https = require('https');
 
+// Global Cookies Setup
+const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
+let globalCookiesArg = '';
+
+if (fs.existsSync(cookiesPath)) {
+  try {
+    let cookieContent = fs.readFileSync(cookiesPath, 'utf-8');
+    if (cookieContent.includes('\r\n') && !isWin) {
+      cookieContent = cookieContent.replace(/\r\n/g, '\n');
+      fs.writeFileSync(cookiesPath, cookieContent);
+      console.log('[yt-dlp] Converted cookies.txt to Unix LF newlines for Render.');
+    }
+  } catch (err) {
+    console.error('[yt-dlp] Failed to parse cookies.txt:', err);
+  }
+  globalCookiesArg = `--cookies "${cookiesPath}"`;
+}
+
 async function downloadYtDlp() {
   if (fs.existsSync(exePath)) return;
   console.log(`⏳ Downloading latest yt-dlp for ${process.platform}...`);
@@ -61,12 +79,8 @@ async function downloadYtDlp() {
  */
 async function searchYouTube(query, limit = 10) {
   return new Promise((resolve, reject) => {
-    // Check if cookies.txt exists to bypass YouTube bot protections
-    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
-    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
-
     // --flat-playlist is much faster for search as it doesn't extract individual video pages
-    const command = `"${exePath}" ${cookiesArg} "ytsearch${limit}:${query.replace(/"/g, '')}" -j --flat-playlist`;
+    const command = `"${exePath}" ${globalCookiesArg} "ytsearch${limit}:${query.replace(/"/g, '')}" -j --flat-playlist`;
     console.log('[yt-dlp] Executing:', command);
     
     exec(command, { encoding: 'utf-8', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
@@ -106,12 +120,8 @@ async function getStreamUrl(videoId) {
       return reject(new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`));
     }
 
-    // Check if cookies.txt exists to bypass YouTube bot protections (especially on Render)
-    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
-    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
-
     // We use the default web client instead of android because Android client often rejects browser cookies on Datacenter IPs
-    const command = `"${exePath}" ${cookiesArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
+    const command = `"${exePath}" ${globalCookiesArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
     exec(command, { encoding: 'utf-8' }, (error, stdout, stderr) => {
       if (error) {
         return reject(error);
@@ -144,11 +154,7 @@ function mapYtResult(data) {
  */
 async function getPlaylistTracks(playlistUrl, limit = 20) {
   return new Promise((resolve, reject) => {
-    // Check if cookies.txt exists to bypass YouTube bot protections
-    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
-    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
-
-    const command = `"${exePath}" ${cookiesArg} "${playlistUrl}" --playlist-end ${limit} -j --flat-playlist`;
+    const command = `"${exePath}" ${globalCookiesArg} "${playlistUrl}" --playlist-end ${limit} -j --flat-playlist`;
     
     exec(command, { encoding: 'utf-8', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       if (error && !stdout) {
