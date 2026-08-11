@@ -4,34 +4,16 @@ const { searchYouTube } = require('../utils/ytdlp');
 const router = express.Router();
 
 const CURATED_PLAYLISTS = [
-  { id: 'top50india',    title: 'Top 50 India',           query: 'Top Hindi Songs 2024',    description: 'The most played tracks in India right now.' },
-  { id: 'bollywoodhits', title: 'Bollywood Chartbusters', query: 'Bollywood Hits 2024',     description: 'Biggest Bollywood hits of the season.' },
-  { id: 'arijitsingh',   title: 'Best of Arijit Singh',   query: 'Arijit Singh best songs', description: 'Soulful melodies by Arijit Singh.' },
-  { id: 'punjabihits',   title: 'Trending Punjabi Hits',  query: 'Punjabi Hits 2024',       description: 'High energy Punjabi bangers.' },
-  { id: 'globaltop50',   title: 'Global Top 50',          query: 'Top English Songs 2024',  description: 'The most played tracks in the world right now.' },
+  { id: 'top50india',    title: 'Top 50 India',           query: 'Top Hindi Songs 2024',    description: 'The most played tracks in India right now.', thumbnailUrl: 'https://i.ytimg.com/vi/O5gwxm3NxFU/hq720.jpg' },
+  { id: 'bollywoodhits', title: 'Bollywood Chartbusters', query: 'Bollywood Hits 2024',     description: 'Biggest Bollywood hits of the season.', thumbnailUrl: 'https://i.ytimg.com/vi/NX5yDs_TLqA/hq720.jpg' },
+  { id: 'arijitsingh',   title: 'Best of Arijit Singh',   query: 'Arijit Singh best songs', description: 'Soulful melodies by Arijit Singh.', thumbnailUrl: 'https://i.ytimg.com/vi/nyuo9-OjNNg/hq720.jpg' },
+  { id: 'punjabihits',   title: 'Trending Punjabi Hits',  query: 'Punjabi Hits 2024',       description: 'High energy Punjabi bangers.', thumbnailUrl: 'https://i.ytimg.com/vi/1zNlsL1E10w/hq720.jpg' },
+  { id: 'globaltop50',   title: 'Global Top 50',          query: 'Top English Songs 2024',  description: 'The most played tracks in the world right now.', thumbnailUrl: 'https://i.ytimg.com/vi/kffacxfA7G4/hq720.jpg' },
 ];
 
-// Home: return playlist cards with dynamic thumbnails
-router.get('/', async (req, res) => {
-  try {
-    const promises = CURATED_PLAYLISTS.map(async (p) => {
-      let thumbnailUrl = '';
-      try {
-        const songs = await searchYouTube(p.query, 1);
-        if (songs.length > 0) {
-          thumbnailUrl = songs[0].thumbnailUrl;
-        }
-      } catch (err) {
-        console.error(`Thumbnail fetch failed for ${p.id}:`, err.message);
-      }
-      return { id: p.id, title: p.title, thumbnailUrl, description: p.description };
-    });
-
-    res.json(await Promise.all(promises));
-  } catch (error) {
-    console.error('Home error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch home data' });
-  }
+// Home: return playlist cards instantly
+router.get('/', (req, res) => {
+  res.json(CURATED_PLAYLISTS);
 });
 
 // Playlist: return songs for a curated playlist
