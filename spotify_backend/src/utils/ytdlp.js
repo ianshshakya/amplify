@@ -61,8 +61,12 @@ async function downloadYtDlp() {
  */
 async function searchYouTube(query, limit = 10) {
   return new Promise((resolve, reject) => {
+    // Check if cookies.txt exists to bypass YouTube bot protections
+    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
+    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+
     // --flat-playlist is much faster for search as it doesn't extract individual video pages
-    const command = `"${exePath}" "ytsearch${limit}:${query.replace(/"/g, '')}" -j --flat-playlist`;
+    const command = `"${exePath}" ${cookiesArg} "ytsearch${limit}:${query.replace(/"/g, '')}" -j --flat-playlist`;
     console.log('[yt-dlp] Executing:', command);
     
     exec(command, { encoding: 'utf-8', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
@@ -102,9 +106,13 @@ async function getStreamUrl(videoId) {
       return reject(new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`));
     }
 
+    // Check if cookies.txt exists to bypass YouTube bot protections (especially on Render)
+    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
+    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+
     // Using android player client bypasses heavy JS deciphering and is much faster
     // We use "ba/b" (best audio, fallback to best) because android client often only exposes combined mp4 format 18
-    const command = `"${exePath}" --no-warnings --no-check-certificates --extractor-args "youtube:player_client=android" -g -f "ba/b" "https://www.youtube.com/watch?v=${videoId}"`;
+    const command = `"${exePath}" ${cookiesArg} --no-warnings --no-check-certificates --extractor-args "youtube:player_client=android" -g -f "ba/b" "https://www.youtube.com/watch?v=${videoId}"`;
     exec(command, { encoding: 'utf-8' }, (error, stdout, stderr) => {
       if (error) {
         return reject(error);
@@ -137,7 +145,11 @@ function mapYtResult(data) {
  */
 async function getPlaylistTracks(playlistUrl, limit = 20) {
   return new Promise((resolve, reject) => {
-    const command = `"${exePath}" "${playlistUrl}" --playlist-end ${limit} -j --flat-playlist`;
+    // Check if cookies.txt exists to bypass YouTube bot protections
+    const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
+    const cookiesArg = fs.existsSync(cookiesPath) ? `--cookies "${cookiesPath}"` : '';
+
+    const command = `"${exePath}" ${cookiesArg} "${playlistUrl}" --playlist-end ${limit} -j --flat-playlist`;
     
     exec(command, { encoding: 'utf-8', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       if (error && !stdout) {
