@@ -10,6 +10,7 @@ const exeName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
 const exePath = isAndroid ? 'yt-dlp' : path.join(__dirname, '..', '..', exeName);
 
 const https = require('https');
+const ytdl = require('@distube/ytdl-core');
 
 // Global Cookies Setup
 const cookiesPath = path.join(__dirname, '..', '..', 'cookies.txt');
@@ -143,55 +144,40 @@ async function getStreamUrl(videoId) {
 }
 
 /**
- * Pipes the raw YouTube audio stream directly to the Express response object.
+ * Pipes the raw YouTube audio stream directly to the Express response object using ytdl-core.
+ * This completely bypasses the yt-dlp format/DRM and PO token issues.
  */
 function pipeAudioStream(videoId, res) {
   if (!videoId || videoId.length !== 11) {
     return res.status(400).send('Invalid videoId');
   }
 
-  const args = [];
-  
-  args.push('--no-warnings', '--no-check-certificates');
-  args.push('--extractor-args', 'youtube:player_client=ios,web');
-  args.push('-f', 'bestaudio');
-  args.push('-o', '-'); // Output raw binary stream to stdout
-  args.push(`https://www.youtube.com/watch?v=${videoId}`);
+  console.log(`[ytdl-core] Proxying audio stream for video ${videoId}...`);
 
-  console.log(`[yt-dlp] Proxying audio stream for video ${videoId}...`);
-  
-  const ytProcess = spawn(exePath, args);
+  try {
+    // Tell the client this is an audio stream
+    res.setHeader('Content-Type', 'audio/webm');
+    res.setHeader('Transfer-Encoding', 'chunked');
 
-  // Tell the client this is an audio stream
-  res.setHeader('Content-Type', 'audio/webm'); // yt-dlp usually outputs webm or m4a for bestaudio
-  res.setHeader('Transfer-Encoding', 'chunked');
+    const stream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, { filter: 'audioonly', quality: 'highestaudio' });
+    
+    stream.pipe(res);
 
-  // Pipe the raw audio directly to the mobile app
-  ytProcess.stdout.pipe(res);
-
-  ytProcess.stderr.on('data', (data) => {
-    const msg = data.toString();
-    if (msg.toLowerCase().includes('error')) {
-      console.error(`[yt-dlp stream error]: ${msg}`);
-    }
-  });
-
-  ytProcess.on('close', (code) => {
-    if (code !== 0) {
-      console.error(`[yt-dlp] Stream proxy exited with code ${code} for video ${videoId}`);
+    stream.on('error', (err) => {
+      console.error(`[ytdl-core stream error]: ${err.message}`);
       if (!res.headersSent) {
         res.status(500).end();
       }
-    }
-  });
+    });
 
-  // If the mobile app disconnects/skips the song, kill the yt-dlp process to save bandwidth!
-  res.on('close', () => {
-    if (!ytProcess.killed) {
-      console.log(`[yt-dlp] Client disconnected. Killing stream for ${videoId} to save bandwidth.`);
-      ytProcess.kill('SIGKILL');
-    }
-  });
+    res.on('close', () => {
+      console.log(`[ytdl-core] Client disconnected. Stream for ${videoId} destroyed to save bandwidth.`);
+      stream.destroy();
+    });
+  } catch (err) {
+    console.error(`[ytdl-core proxy error]: ${err.message}`);
+    if (!res.headersSent) res.status(500).end();
+  }
 }
 
 function mapYtResult(data) {
