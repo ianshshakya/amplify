@@ -107,12 +107,14 @@ class CuratedPlaylist {
   final String title;
   final String thumbnailUrl;
   final String description;
+  final String query;
 
   const CuratedPlaylist({
     required this.id,
     required this.title,
     required this.thumbnailUrl,
     required this.description,
+    this.query = '',
   });
 
   factory CuratedPlaylist.fromJson(Map<String, dynamic> json) =>
@@ -121,6 +123,7 @@ class CuratedPlaylist {
         title: json['title'] as String? ?? '',
         thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
         description: json['description'] as String? ?? '',
+        query: json['query'] as String? ?? '',
       );
 }
 

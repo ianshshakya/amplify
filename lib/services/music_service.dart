@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart' show Color;
+import 'package:flutter/foundation.dart' show debugPrint;
 import '../models/track.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
 import '../models/lyrics.dart';
 import '../models/mood_category.dart';
 import 'api_client.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 /// Central service for all music data fetching.
 /// Talks to our Node.js backend which uses JioSaavn (saavnapi) for search
@@ -15,39 +19,32 @@ class MusicService {
   MusicService._internal();
 
   final ApiClient _api = ApiClient();
+  final YoutubeExplode _yt = YoutubeExplode();
 
   // ─── Search ────────────────────────────────────────────────────────────────
 
-  /// Search JioSaavn for songs. Returns an empty list on any error.
+  /// Search YouTube for songs using local youtube_explode_dart.
   Future<List<Track>> search(String query) async {
     if (query.trim().isEmpty) return [];
     try {
-      final results = await _api
-          .get('/music/search?q=${Uri.encodeQueryComponent(query)}');
-      if (results is! List) return [];
-      return results
-          .map((s) => _trackFromJson(s as Map<String, dynamic>))
-          .toList();
+      final results = await _yt.search.search(query);
+      return results.map((v) => Track(
+        videoId: v.id.value,
+        title: v.title,
+        artist: v.author,
+        thumbnailUrl: v.thumbnails.highResUrl,
+        duration: v.duration ?? const Duration(minutes: 3),
+      )).toList();
     } catch (e) {
+      debugPrint('Local search error: $e');
       return [];
     }
   }
 
-  /// Search with a specific filter type: 'songs' | 'albums' | 'artists' | 'playlists'
+  /// Search with a specific filter type
   Future<List<dynamic>> searchWithFilter(String query, String type) async {
-    if (query.trim().isEmpty) return [];
-    try {
-      final results = await _api.get(
-        '/music/search?q=${Uri.encodeQueryComponent(query)}',
-      );
-      if (results is! List) return [];
-      // saavnapi returns songs only — always map as Track
-      return results
-          .map((s) => _trackFromJson(s as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      return [];
-    }
+    // For now, we only support songs via YoutubeExplode
+    return search(query);
   }
 
   // ─── Home feed ─────────────────────────────────────────────────────────────
@@ -66,8 +63,17 @@ class MusicService {
 
   Future<CuratedPlaylistData?> getCuratedPlaylist(String id) async {
     try {
-      final result = await _api.get('/home/playlist/$id');
-      return CuratedPlaylistData.fromJson(result as Map<String, dynamic>);
+      final results = await getHomeFeed();
+      final p = results.firstWhere((p) => p.id == id);
+      
+      final songs = await search(p.query);
+      return CuratedPlaylistData(
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        thumbnailUrl: songs.isNotEmpty ? songs.first.thumbnailUrl : '',
+        songs: songs,
+      );
     } catch (e) {
       return null;
     }
@@ -75,17 +81,9 @@ class MusicService {
 
   // ─── Charts & moods ────────────────────────────────────────────────────────
 
-  /// Fetch trending charts tracks.
+  /// Fetch trending charts tracks locally.
   Future<List<Track>> getCharts() async {
-    try {
-      final results = await _api.get('/home/charts');
-      if (results is! List) return [];
-      return results
-          .map((t) => _trackFromJson(t as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      return [];
-    }
+    return search('Top global hits 2024');
   }
 
   /// Fetch mood/genre categories for the mood browsing grid.
@@ -101,11 +99,17 @@ class MusicService {
     }
   }
 
-  /// Fetch tracks for a specific mood playlist.
+  /// Fetch tracks for a specific mood playlist locally.
   Future<CuratedPlaylistData?> getMoodPlaylist(String playlistId) async {
     try {
-      final result = await _api.get('/home/mood/$playlistId');
-      return CuratedPlaylistData.fromJson(result as Map<String, dynamic>);
+      final songs = await search('$playlistId music');
+      return CuratedPlaylistData(
+        id: playlistId,
+        title: playlistId,
+        description: 'Mood playlist',
+        thumbnailUrl: songs.isNotEmpty ? songs.first.thumbnailUrl : '',
+        songs: songs,
+      );
     } catch (e) {
       return null;
     }
@@ -113,11 +117,21 @@ class MusicService {
 
   // ─── Artist ────────────────────────────────────────────────────────────────
 
-  /// Fetch full artist details: bio, top songs, albums, singles, related artists.
+  /// Fetch artist details using local search.
   Future<Artist?> getArtist(String artistId) async {
     try {
-      final result = await _api.get('/music/artist/$artistId');
-      return Artist.fromJson(result as Map<String, dynamic>);
+      final tracks = await search('$artistId songs');
+      return Artist(
+        id: artistId,
+        name: artistId,
+        thumbnailUrl: tracks.isNotEmpty ? tracks.first.thumbnailUrl : '',
+        subscribers: 'Unknown',
+        description: '',
+        topSongs: tracks,
+        albums: [],
+        singles: [],
+        relatedArtists: [],
+      );
     } catch (e) {
       return null;
     }
@@ -125,11 +139,19 @@ class MusicService {
 
   // ─── Album ─────────────────────────────────────────────────────────────────
 
-  /// Fetch full album details with track list.
+  /// Fetch full album details using local search.
   Future<Album?> getAlbum(String albumId) async {
     try {
-      final result = await _api.get('/music/album/$albumId');
-      return Album.fromJson(result as Map<String, dynamic>);
+      final tracks = await search('$albumId full album');
+      return Album(
+        id: albumId,
+        title: albumId,
+        artistName: 'Unknown',
+        year: '',
+        thumbnailUrl: tracks.isNotEmpty ? tracks.first.thumbnailUrl : '',
+        totalDuration: Duration.zero,
+        tracks: tracks,
+      );
     } catch (e) {
       return null;
     }
@@ -150,30 +172,44 @@ class MusicService {
 
   // ─── Watch playlist (radio / autoplay) ─────────────────────────────────────
 
-  /// Get the YT Music "watch next" queue for a video — used to seed autoplay.
+  /// Get the YT Music "watch next" queue for a video using local YoutubeExplode.
   Future<List<Track>> getWatchPlaylist(String videoId) async {
     try {
-      final results = await _api.get('/music/watch/$videoId');
-      if (results is! List) return [];
-      return results
-          .map((t) => _trackFromJson(t as Map<String, dynamic>))
-          .toList();
+      final video = await _yt.videos.get(videoId);
+      final related = await _yt.videos.getRelatedVideos(video);
+      if (related == null) return [];
+      return related.map((v) => Track(
+        videoId: v.id.value,
+        title: v.title,
+        artist: v.author,
+        thumbnailUrl: v.thumbnails.highResUrl,
+        duration: v.duration ?? const Duration(minutes: 3),
+      )).toList();
     } catch (e) {
       return [];
     }
   }
 
-  // ─── Stream URL ────────────────────────────────────────────────────────────
-
-  /// Get the direct audio stream URL from the JioSaavn backend.
-  /// Returns a stable MP4 CDN URL.
+  /// Get the direct audio stream URL using Piped APIs exclusively to prevent 403 Forbidden.
+  /// Get the direct audio stream URL using youtube_explode_dart locally.
   Future<String> getAudioStreamUrl(String videoId) async {
-    final res = await _api.get('/music/stream/$videoId');
-    final url = res['streamUrl'] as String?;
-    if (url == null || url.isEmpty) {
-      throw Exception('Backend returned null streamUrl for $videoId');
+    try {
+      final manifest = await _yt.videos.streamsClient.getManifest(videoId);
+      
+      final audioStreams = manifest.audioOnly;
+      if (audioStreams.isNotEmpty) {
+        return audioStreams.withHighestBitrate().url.toString();
+      }
+      
+      final muxedStreams = manifest.muxed;
+      if (muxedStreams.isNotEmpty) {
+        return muxedStreams.withHighestBitrate().url.toString();
+      }
+      
+      throw Exception('No streams found for $videoId');
+    } catch (e) {
+      throw Exception('Failed to extract stream locally for $videoId: $e');
     }
-    return url;
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -268,5 +304,7 @@ class MusicService {
     ];
   }
 
-  void dispose() {}
+  void dispose() {
+    _yt.close();
+  }
 }

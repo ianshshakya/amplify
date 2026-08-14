@@ -185,13 +185,19 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       if (track.streamUrl != null && track.streamUrl!.isNotEmpty) {
         streamUrl = track.streamUrl!;
       } else {
-        streamUrl = await _musicService.getAudioStreamUrl(track.videoId);
+        try {
+          final res = await apiClient.get('/music/stream/${track.videoId}');
+          if (res.data != null && res.data['streamUrl'] != null) {
+            streamUrl = res.data['streamUrl'];
+          } else {
+            throw Exception('Stream URL not found in backend response');
+          }
+        } catch (e) {
+          throw StreamUnavailableException('Failed to fetch stream from backend: $e');
+        }
       }
       return AudioSource.uri(
         Uri.parse(streamUrl),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36',
-        },
         tag: _makeMediaItem(track),
       );
     }
@@ -349,7 +355,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   MediaItem _makeMediaItem(Track track) => MediaItem(
-        id: track.videoId,
+        id: '${track.videoId}_${DateTime.now().microsecondsSinceEpoch}',
         title: track.title,
         artist: track.artist,
         artUri: Uri.tryParse(track.thumbnailUrl),

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, exec } = require('child_process');
+const { getRandomProxy } = require('./proxyManager');
 
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
@@ -113,22 +114,49 @@ async function searchYouTube(query, limit = 10) {
  * @param {string} videoId 
  * @returns {string} The direct googlevideo.com audio stream URL
  */
-async function getStreamUrl(videoId) {
-  return new Promise((resolve, reject) => {
-    // YouTube IDs are exactly 11 characters long
-    if (!videoId || videoId.length !== 11) {
-      return reject(new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`));
-    }
+async function getStreamUrl(videoId, maxRetries = 3) {
+  // YouTube IDs are exactly 11 characters long
+  if (!videoId || videoId.length !== 11) {
+    throw new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`);
+  }
 
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    attempt++;
+    const proxy = await getRandomProxy();
+    const proxyArg = proxy ? `--proxy "${proxy}"` : '';
+    
     // We use the default web client instead of android because Android client often rejects browser cookies on Datacenter IPs
-    const command = `"${exePath}" ${globalCookiesArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
-    exec(command, { encoding: 'utf-8' }, (error, stdout, stderr) => {
-      if (error) {
-        return reject(error);
+    const command = `"${exePath}" ${globalCookiesArg} ${proxyArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
+    
+    console.log(`[yt-dlp] Fetching stream (Attempt ${attempt}/${maxRetries}). Proxy: ${proxy || 'None'}`);
+    
+    try {
+      const url = await new Promise((resolve, reject) => {
+        exec(command, { encoding: 'utf-8', timeout: 15000 }, (error, stdout, stderr) => {
+          if (error) {
+            return reject(error);
+          }
+          if (!stdout || stdout.trim() === '') {
+            return reject(new Error('Empty output from yt-dlp'));
+          }
+          resolve(stdout.trim());
+        });
+      });
+      
+      console.log(`[yt-dlp] Stream URL fetched successfully!`);
+      return url;
+    } catch (err) {
+      console.warn(`[yt-dlp] Attempt ${attempt} failed: ${err.message.split('\n')[0]}`);
+      if (attempt >= maxRetries) {
+        console.error(`[yt-dlp] All ${maxRetries} proxy attempts failed for video ${videoId}.`);
+        throw new Error('All proxy attempts failed.');
       }
-      resolve(stdout.trim());
-    });
-  });
+      // Optional: Add a small delay before next retry
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 }
 
 function mapYtResult(data) {
