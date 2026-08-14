@@ -186,14 +186,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         streamUrl = track.streamUrl!;
       } else {
         try {
+          final apiClient = ApiClient();
           final res = await apiClient.get('/music/stream/${track.videoId}');
-          if (res.data != null && res.data['streamUrl'] != null) {
-            streamUrl = res.data['streamUrl'];
+          if (res != null && res['streamUrl'] != null) {
+            streamUrl = res['streamUrl'];
           } else {
             throw Exception('Stream URL not found in backend response');
           }
         } catch (e) {
-          throw StreamUnavailableException('Failed to fetch stream from backend: $e');
+          throw StreamUnavailableException(500, 'Failed to fetch stream from backend: $e');
         }
       }
       return AudioSource.uri(

@@ -114,7 +114,7 @@ async function searchYouTube(query, limit = 10) {
  * @param {string} videoId 
  * @returns {string} The direct googlevideo.com audio stream URL
  */
-async function getStreamUrl(videoId, maxRetries = 3) {
+async function getStreamUrl(videoId, maxRetries = 7) {
   // YouTube IDs are exactly 11 characters long
   if (!videoId || videoId.length !== 11) {
     throw new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`);
@@ -134,9 +134,10 @@ async function getStreamUrl(videoId, maxRetries = 3) {
     
     try {
       const url = await new Promise((resolve, reject) => {
-        exec(command, { encoding: 'utf-8', timeout: 15000 }, (error, stdout, stderr) => {
+        exec(command, { encoding: 'utf-8', timeout: 30000 }, (error, stdout, stderr) => {
           if (error) {
-            return reject(error);
+            // Include stderr in the error message for better debugging
+            return reject(new Error(`${error.message} - Stderr: ${stderr}`));
           }
           if (!stdout || stdout.trim() === '') {
             return reject(new Error('Empty output from yt-dlp'));
@@ -148,6 +149,7 @@ async function getStreamUrl(videoId, maxRetries = 3) {
       console.log(`[yt-dlp] Stream URL fetched successfully!`);
       return url;
     } catch (err) {
+      // Print the actual reason why it failed (timeout, proxy error, etc)
       console.warn(`[yt-dlp] Attempt ${attempt} failed: ${err.message.split('\n')[0]}`);
       if (attempt >= maxRetries) {
         console.error(`[yt-dlp] All ${maxRetries} proxy attempts failed for video ${videoId}.`);
