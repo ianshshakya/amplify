@@ -4,8 +4,10 @@ const { execSync, exec, spawn } = require('child_process');
 
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
+const isAndroid = process.platform === 'android';
 const exeName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
-const exePath = path.join(__dirname, '..', '..', exeName);
+// On Android (Termux), we use the globally installed Python version instead of downloading a binary
+const exePath = isAndroid ? 'yt-dlp' : path.join(__dirname, '..', '..', exeName);
 
 const https = require('https');
 
@@ -28,6 +30,11 @@ if (fs.existsSync(cookiesPath)) {
 }
 
 async function downloadYtDlp() {
+  // Termux/Android users should install via pip, so we don't download the Linux x86 binary
+  if (isAndroid) {
+    console.log('📱 Android detected. Assuming yt-dlp is installed via pip/pkg.');
+    return;
+  }
   if (fs.existsSync(exePath)) return;
   console.log(`⏳ Downloading latest yt-dlp for ${process.platform}...`);
   

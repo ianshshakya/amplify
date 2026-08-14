@@ -21,7 +21,7 @@ class ApiClient {
   // If you are using the Android Emulator, you MUST change this back to 'http://10.0.2.2:5000/api'
   // If you are using a real phone, change this to your PC's WiFi IP address (e.g. 192.168.1.X)
   //static const String baseUrl = 'http://10.77.236.84:5000/api';
-   static const String baseUrl = 'https://amplify-ycmb.onrender.com/api';
+   static const String baseUrl = 'https://combination-namely-closing-multi.trycloudflare.com/api';
 
   final TokenStorage _tokenStorage = TokenStorage();
 
