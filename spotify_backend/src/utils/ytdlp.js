@@ -153,6 +153,7 @@ function pipeAudioStream(videoId, res) {
   const args = [];
   
   args.push('--no-warnings', '--no-check-certificates');
+  args.push('--extractor-args', 'youtube:player_client=ios,web');
   args.push('-f', 'bestaudio');
   args.push('-o', '-'); // Output raw binary stream to stdout
   args.push(`https://www.youtube.com/watch?v=${videoId}`);
