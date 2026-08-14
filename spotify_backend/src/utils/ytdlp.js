@@ -120,9 +120,13 @@ async function getStreamUrl(videoId) {
       return reject(new Error(`Invalid YouTube ID format: ${videoId}. (Probably an old JioSaavn ID)`));
     }
 
+    // Use Webshare Premium Proxy to bypass Render datacenter block
+    const premiumProxy = '--proxy "http://sbqksapf:46vlt9rzvi1e@p.webshare.io:80"';
+
     // We use the default web client instead of android because Android client often rejects browser cookies on Datacenter IPs
-    const command = `"${exePath}" ${globalCookiesArg} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
-    exec(command, { encoding: 'utf-8', timeout: 30000 }, (error, stdout, stderr) => {
+    const command = `"${exePath}" ${globalCookiesArg} ${premiumProxy} --no-warnings --no-check-certificates -g -f "bestaudio" "https://www.youtube.com/watch?v=${videoId}"`;
+    
+    exec(command, { encoding: 'utf-8', timeout: 15000 }, (error, stdout, stderr) => {
       if (error) {
         return reject(new Error(`${error.message} - Stderr: ${stderr}`));
       }
