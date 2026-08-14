@@ -145,12 +145,6 @@ function pipeAudioStream(videoId, res) {
 
   const args = [];
   
-  // Temporarily disabled cookies to prevent 403 IP mismatch when using proxy
-  // if (fs.existsSync(cookiesPath)) {
-  //   args.push('--cookies', cookiesPath);
-  // }
-  
-  args.push('--proxy', 'http://sbqksapf:46vlt9rzvi1e@31.59.20.176:6754');
   args.push('--no-warnings', '--no-check-certificates');
   args.push('-f', 'bestaudio');
   args.push('-o', '-'); // Output raw binary stream to stdout
