@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync, exec } = require('child_process');
+const { execSync, exec, spawn } = require('child_process');
 
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
@@ -135,6 +135,61 @@ async function getStreamUrl(videoId) {
   });
 }
 
+/**
+ * Pipes the raw YouTube audio stream directly to the Express response object.
+ */
+function pipeAudioStream(videoId, res) {
+  if (!videoId || videoId.length !== 11) {
+    return res.status(400).send('Invalid videoId');
+  }
+
+  const args = [];
+  if (fs.existsSync(cookiesPath)) {
+    args.push('--cookies', cookiesPath);
+  }
+  
+  args.push('--proxy', 'http://sbqksapf:46vlt9rzvi1e@31.59.20.176:6754');
+  args.push('--no-warnings', '--no-check-certificates');
+  args.push('-f', 'bestaudio');
+  args.push('-o', '-'); // Output raw binary stream to stdout
+  args.push(`https://www.youtube.com/watch?v=${videoId}`);
+
+  console.log(`[yt-dlp] Proxying audio stream for video ${videoId}...`);
+  
+  const ytProcess = spawn(exePath, args);
+
+  // Tell the client this is an audio stream
+  res.setHeader('Content-Type', 'audio/webm'); // yt-dlp usually outputs webm or m4a for bestaudio
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  // Pipe the raw audio directly to the mobile app
+  ytProcess.stdout.pipe(res);
+
+  ytProcess.stderr.on('data', (data) => {
+    const msg = data.toString();
+    if (msg.toLowerCase().includes('error')) {
+      console.error(`[yt-dlp stream error]: ${msg}`);
+    }
+  });
+
+  ytProcess.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`[yt-dlp] Stream proxy exited with code ${code} for video ${videoId}`);
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
+    }
+  });
+
+  // If the mobile app disconnects/skips the song, kill the yt-dlp process to save bandwidth!
+  res.on('close', () => {
+    if (!ytProcess.killed) {
+      console.log(`[yt-dlp] Client disconnected. Killing stream for ${videoId} to save bandwidth.`);
+      ytProcess.kill('SIGKILL');
+    }
+  });
+}
+
 function mapYtResult(data) {
   // Use the highest quality thumbnail available
   let thumbnailUrl = '';
@@ -199,4 +254,5 @@ module.exports = {
   getStreamUrl,
   getPlaylistTracks,
   getRelatedTracks,
+  pipeAudioStream,
 };

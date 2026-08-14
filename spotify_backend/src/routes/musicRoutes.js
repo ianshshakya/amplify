@@ -1,5 +1,5 @@
 const express = require('express');
-const { searchYouTube, getStreamUrl, getPlaylistTracks, getRelatedTracks } = require('../utils/ytdlp');
+const { searchYouTube, getStreamUrl, getPlaylistTracks, getRelatedTracks, pipeAudioStream } = require('../utils/ytdlp');
 
 const router = express.Router();
 
@@ -17,27 +17,33 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// 2. Stream (using yt-dlp)
+// 2. Stream URL (returns the custom backend proxy URL)
 router.get('/stream/:songId', async (req, res) => {
   try {
     const { songId } = req.params;
     if (!songId) return res.status(400).json({ error: 'Missing songId' });
 
-    const bestUrl = await getStreamUrl(songId);
-
-    if (!bestUrl) {
-      return res.status(404).json({ error: 'Song not found or no stream available' });
-    }
+    // We don't fetch the Googlevideo URL here anymore. We just tell the mobile app 
+    // to stream directly from our new /play endpoint on this exact server.
+    const proxyUrl = `${req.protocol}://${req.get('host')}/api/music/play/${songId}`;
 
     res.json({
-      streamUrl: bestUrl,
-      // We don't get duration from -g, but the app already knows it from the search results
+      streamUrl: proxyUrl,
       duration: 0, 
     });
   } catch (error) {
     console.error('Stream error:', error.message);
-    res.status(500).json({ error: 'Failed to get stream URL' });
+    res.status(500).json({ error: 'Failed to generate stream URL' });
   }
+});
+
+// 2.5 Play (Pipes audio directly to the client)
+router.get('/play/:songId', (req, res) => {
+  const { songId } = req.params;
+  if (!songId) return res.status(400).send('Missing songId');
+  
+  // Hand off the response object to the yt-dlp piping function
+  pipeAudioStream(songId, res);
 });
 
 // 3. Album
