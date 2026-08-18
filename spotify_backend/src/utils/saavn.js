@@ -78,6 +78,39 @@ async function getStreamUrl(songId) {
   throw new Error('Failed to decrypt or find media URL');
 }
 
+/**
+ * The Hybrid Engine: Takes YouTube metadata and matches it against JioSaavn to get the stream
+ */
+async function getSaavnStreamByMetadata(title, artist) {
+  // Clean up the query for better matching
+  const cleanTitle = title.replace(/\\(Official.*?\\)|\\(Lyric.*?\\)|\\[.*?\\]|Music Video|Official Audio/gi, '').trim();
+  const query = `${cleanTitle} ${artist}`;
+  
+  console.log(`[JioSaavn Hybrid] Searching for audio: "${query}"`);
+  
+  const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=1&p=1&_format=json&_marker=0&ctx=web6dot0`;
+  const response = await fetch(url);
+  
+  if (!response.ok) throw new Error('JioSaavn search failed');
+  const data = await response.json();
+  
+  if (!data.results || data.results.length === 0) {
+    throw new Error('No matching song found on JioSaavn for ' + query);
+  }
+  
+  const bestMatch = data.results[0];
+  
+  if (bestMatch.encrypted_media_url) {
+    const decryptedUrl = decryptUrl(bestMatch.encrypted_media_url);
+    if (decryptedUrl) {
+      console.log(`[JioSaavn Hybrid] Found audio stream for: ${bestMatch.song}`);
+      return decryptedUrl;
+    }
+  }
+  
+  throw new Error('Failed to decrypt JioSaavn URL');
+}
+
 async function getPlaylistTracks(playlistId, limit = 30) {
   const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&listid=${playlistId}&_format=json&_marker=0&ctx=web6dot0`;
   try {
@@ -126,6 +159,7 @@ async function getRelatedTracks(songId, limit = 20) {
 module.exports = {
   searchSaavn,
   getStreamUrl,
+  getSaavnStreamByMetadata,
   getPlaylistTracks,
   getRelatedTracks
 };
