@@ -83,8 +83,14 @@ async function getStreamUrl(songId) {
  */
 async function getSaavnStreamByMetadata(title, artist) {
   // Clean up the query for better matching
-  const cleanTitle = title.replace(/\\(Official.*?\\)|\\(Lyric.*?\\)|\\[.*?\\]|Music Video|Official Audio/gi, '').trim();
-  const query = `${cleanTitle} ${artist}`;
+  let cleanTitle = title.replace(/\(Official.*?\)|\(Lyric.*?\)|\[.*?\]|Music Video|Official Audio/gi, '').trim();
+  
+  if (artist && cleanTitle.toLowerCase().includes(artist.toLowerCase())) {
+     cleanTitle = cleanTitle.replace(new RegExp(artist, 'ig'), '').replace(/-/g, '').trim();
+  }
+  
+  cleanTitle = cleanTitle.replace(/^[\s-]+|[\s-]+$/g, '');
+  const query = `${cleanTitle} ${artist}`.trim();
   
   console.log(`[JioSaavn Hybrid] Searching for audio: "${query}"`);
   
