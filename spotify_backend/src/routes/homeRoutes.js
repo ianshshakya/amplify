@@ -1,5 +1,5 @@
 const express = require('express');
-const { searchYouTube } = require('../utils/ytdlp');
+const { searchSaavn } = require('../utils/saavn');
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.get('/playlist/:id', async (req, res) => {
     const playlist = CURATED_PLAYLISTS.find(p => p.id === req.params.id);
     if (!playlist) return res.status(404).json({ error: 'Playlist not found' });
 
-    const songs = await searchYouTube(playlist.query, 20);
+    const songs = await searchSaavn(playlist.query, 20);
     const firstThumb = songs.length > 0 ? songs[0].thumbnailUrl : '';
 
     res.json({
@@ -41,7 +41,7 @@ router.get('/playlist/:id', async (req, res) => {
 // Charts
 router.get('/charts', async (req, res) => {
   try {
-    const songs = await searchYouTube('Top global hits 2024', 20);
+    const songs = await searchSaavn('Top global hits 2024', 20);
     res.json(songs);
   } catch (error) {
     console.error('Charts error:', error.message);
@@ -59,7 +59,7 @@ router.get('/moods', async (req, res) => {
 // Mood Playlist
 router.get('/mood/:id', async (req, res) => {
   try {
-    const songs = await searchYouTube(`${req.params.id} music`, 20);
+    const songs = await searchSaavn(`${req.params.id} music`, 20);
     res.json({
       id: req.params.id,
       title: req.params.id,
