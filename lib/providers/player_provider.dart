@@ -186,10 +186,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         streamUrl = track.streamUrl!;
       } else {
         try {
-          final encodedTitle = Uri.encodeComponent(track.title);
-          final encodedArtist = Uri.encodeComponent(track.artist);
           final apiClient = ApiClient();
-          final res = await apiClient.get('/music/stream/${track.videoId}?title=$encodedTitle&artist=$encodedArtist');
+          final res = await apiClient.get('/music/stream/${track.videoId}');
           if (res != null && res['streamUrl'] != null) {
             streamUrl = res['streamUrl'];
           } else {
