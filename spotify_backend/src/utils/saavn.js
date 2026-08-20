@@ -54,7 +54,7 @@ function decryptUrl(encryptedUrl) {
     ).toString(CryptoJS.enc.Utf8);
     
     // Convert low quality to high quality
-    return decrypted.replace('_96.mp4', '_320.mp4').replace('.mp4', '.m4a');
+    return decrypted.replace('_96.mp4', '_320.mp4');
   } catch (err) {
     console.error('Decryption error:', err);
     return null;
