@@ -67,8 +67,17 @@ async function getStreamUrl(songId) {
   if (!response.ok) throw new Error('Failed to fetch song details');
   
   const data = await response.json();
-  const songData = data[songId];
-  if (!songData) throw new Error('Song not found');
+  
+  let songData = null;
+  if (data.songs && data.songs.length > 0) {
+    songData = data.songs.find(s => s.id === songId) || data.songs[0];
+  } else if (data[songId]) {
+    songData = data[songId];
+  }
+  
+  if (!songData) {
+    throw new Error('Song not found in JioSaavn response');
+  }
   
   if (songData.encrypted_media_url) {
     const decryptedUrl = decryptUrl(songData.encrypted_media_url);
