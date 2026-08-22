@@ -4,6 +4,7 @@ const { searchSaavn } = require('../utils/saavn');
 const router = express.Router();
 
 const CURATED_PLAYLISTS = [
+  { id: 'global100',     title: 'Global 100',             query: '_FETCH_GLOBAL_100_',      description: 'Your exclusively uploaded tracks.', thumbnailUrl: 'https://i.ytimg.com/vi/kffacxfA7G4/hq720.jpg' },
   { id: 'top50india',    title: 'Top 50 India',           query: 'Top Hindi Songs 2024',    description: 'The most played tracks in India right now.', thumbnailUrl: 'https://i.ytimg.com/vi/O5gwxm3NxFU/hq720.jpg' },
   { id: 'bollywoodhits', title: 'Bollywood Chartbusters', query: 'Bollywood Hits 2024',     description: 'Biggest Bollywood hits of the season.', thumbnailUrl: 'https://i.ytimg.com/vi/NX5yDs_TLqA/hq720.jpg' },
   { id: 'arijitsingh',   title: 'Best of Arijit Singh',   query: 'Arijit Singh best songs', description: 'Soulful melodies by Arijit Singh.', thumbnailUrl: 'https://i.ytimg.com/vi/nyuo9-OjNNg/hq720.jpg' },

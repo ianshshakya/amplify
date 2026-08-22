@@ -6,7 +6,6 @@ import '../models/album.dart';
 import '../models/lyrics.dart';
 import '../models/mood_category.dart';
 import 'api_client.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -19,31 +18,25 @@ class MusicService {
   MusicService._internal();
 
   final ApiClient _api = ApiClient();
-  final YoutubeExplode _yt = YoutubeExplode();
 
   // ─── Search ────────────────────────────────────────────────────────────────
 
-  /// Search YouTube for songs using local youtube_explode_dart.
+  /// Search for songs using the backend API.
   Future<List<Track>> search(String query) async {
     if (query.trim().isEmpty) return [];
     try {
-      final results = await _yt.search.search(query);
-      return results.map((v) => Track(
-        videoId: v.id.value,
-        title: v.title,
-        artist: v.author,
-        thumbnailUrl: v.thumbnails.highResUrl,
-        duration: v.duration ?? const Duration(minutes: 3),
-      )).toList();
+      final results = await _api.get('/music/search?q=${Uri.encodeComponent(query)}');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
     } catch (e) {
-      debugPrint('Local search error: $e');
+      debugPrint('Search error: $e');
       return [];
     }
   }
 
   /// Search with a specific filter type
   Future<List<dynamic>> searchWithFilter(String query, String type) async {
-    // For now, we only support songs via YoutubeExplode
+    // For now, we just pass to the backend search
     return search(query);
   }
 
@@ -172,43 +165,28 @@ class MusicService {
 
   // ─── Watch playlist (radio / autoplay) ─────────────────────────────────────
 
-  /// Get the YT Music "watch next" queue for a video using local YoutubeExplode.
+  /// Get the "watch next" queue for a video from the backend.
   Future<List<Track>> getWatchPlaylist(String videoId) async {
     try {
-      final video = await _yt.videos.get(videoId);
-      final related = await _yt.videos.getRelatedVideos(video);
-      if (related == null) return [];
-      return related.map((v) => Track(
-        videoId: v.id.value,
-        title: v.title,
-        artist: v.author,
-        thumbnailUrl: v.thumbnails.highResUrl,
-        duration: v.duration ?? const Duration(minutes: 3),
-      )).toList();
+      final results = await _api.get('/music/watch/$videoId');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
     } catch (e) {
+      debugPrint('Watch playlist error: $e');
       return [];
     }
   }
 
-  /// Get the direct audio stream URL using Piped APIs exclusively to prevent 403 Forbidden.
-  /// Get the direct audio stream URL using youtube_explode_dart locally.
+  /// Get the direct audio stream URL from the backend.
   Future<String> getAudioStreamUrl(String videoId) async {
     try {
-      final manifest = await _yt.videos.streamsClient.getManifest(videoId);
-      
-      final audioStreams = manifest.audioOnly;
-      if (audioStreams.isNotEmpty) {
-        return audioStreams.withHighestBitrate().url.toString();
+      final res = await _api.get('/music/stream/$videoId');
+      if (res != null && res['streamUrl'] != null) {
+        return res['streamUrl'];
       }
-      
-      final muxedStreams = manifest.muxed;
-      if (muxedStreams.isNotEmpty) {
-        return muxedStreams.withHighestBitrate().url.toString();
-      }
-      
-      throw Exception('No streams found for $videoId');
+      throw Exception('Backend returned null streamUrl');
     } catch (e) {
-      throw Exception('Failed to extract stream locally for $videoId: $e');
+      throw Exception('Failed to extract stream from backend for $videoId: $e');
     }
   }
 
@@ -304,7 +282,4 @@ class MusicService {
     ];
   }
 
-  void dispose() {
-    _yt.close();
-  }
 }

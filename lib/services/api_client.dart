@@ -33,7 +33,7 @@ class ApiClient {
     return headers;
   }
 
-  Future<dynamic> get(String path) async {
+  Future<dynamic> get( String path ) async {
     try {
       final res = await http.get(
         Uri.parse('$baseUrl$path'),

@@ -1,7 +1,19 @@
 const express = require('express');
 const { searchSaavn, getStreamUrl, getPlaylistTracks, getRelatedTracks } = require('../utils/saavn');
+const CreatorSong = require('../models/CreatorSong');
 
 const router = express.Router();
+
+// 0. Creator Songs
+router.get('/creator', async (req, res) => {
+  try {
+    const songs = await CreatorSong.find().sort({ createdAt: -1 }).lean();
+    res.json(songs);
+  } catch (error) {
+    console.error('Creator songs error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch creator songs.' });
+  }
+});
 
 // 1. Search
 router.get('/search', async (req, res) => {
@@ -9,8 +21,37 @@ router.get('/search', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: 'Missing search query' });
 
+    // Handle our special Global 100 playlist query
+    if (query === '_FETCH_GLOBAL_100_') {
+      const creatorSongs = await CreatorSong.find().limit(100).sort({ createdAt: -1 }).lean();
+      return res.json(creatorSongs.map(s => ({
+        videoId: s.videoId,
+        title: s.title,
+        artist: s.artist,
+        thumbnailUrl: s.thumbnailUrl || 'https://archive.org/services/img/internet_archive_logo',
+        duration: s.duration,
+      })));
+    }
+
+    // Normal text search: find matching creator songs
+    const regex = new RegExp(query, 'i');
+    const creatorMatches = await CreatorSong.find({
+      $or: [{ title: regex }, { artist: regex }]
+    }).limit(10).lean();
+
+    const formattedCreatorMatches = creatorMatches.map(s => ({
+      videoId: s.videoId,
+      title: s.title,
+      artist: s.artist,
+      thumbnailUrl: s.thumbnailUrl || 'https://archive.org/services/img/internet_archive_logo',
+      duration: s.duration,
+    }));
+
+    // Fetch from JioSaavn
     const songs = await searchSaavn(query, 20);
-    res.json(songs);
+    
+    // Combine them (Custom songs at the top!)
+    res.json([...formattedCreatorMatches, ...songs]);
   } catch (error) {
     console.error('Search error:', error.message);
     res.status(500).json({ error: 'Failed to search for songs.' });
@@ -23,6 +64,17 @@ router.get('/stream/:songId', async (req, res) => {
     const { songId } = req.params;
     if (!songId) return res.status(400).json({ error: 'Missing songId' });
     
+    // Intercept custom creator songs
+    if (songId.startsWith('creator_')) {
+      const creatorSong = await CreatorSong.findOne({ videoId: songId });
+      if (creatorSong) {
+        return res.json({
+          streamUrl: creatorSong.streamUrl,
+          duration: creatorSong.duration,
+        });
+      }
+    }
+
     console.log(`[JioSaavn Engine] Fetching audio stream for ID: ${songId}`);
     
     // Now that the search returns JioSaavn IDs, we can fetch the stream directly!
