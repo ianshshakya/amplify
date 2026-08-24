@@ -139,7 +139,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           itemBuilder: (context, index) {
             return TrackTile(
               track: state.songResults[index],
-              context_: state.songResults,
+              context_: [state.songResults[index]],
             );
           },
         ),

@@ -41,7 +41,14 @@ async function searchSaavn(query, limit = 20) {
   
   if (!data.results) return [];
   
-  return data.results.map(mapSaavnResult);
+  // Sort results by play_count descending so original/famous songs appear first
+  const sortedResults = data.results.sort((a, b) => {
+    const playA = parseInt(a.play_count, 10) || 0;
+    const playB = parseInt(b.play_count, 10) || 0;
+    return playB - playA;
+  });
+  
+  return sortedResults.map(mapSaavnResult);
 }
 
 function decryptUrl(encryptedUrl) {
@@ -171,10 +178,31 @@ async function getRelatedTracks(songId, limit = 20) {
   }
 }
 
+async function getLyrics(songId) {
+  try {
+    const url = `https://www.jiosaavn.com/api.php?__call=lyrics.getLyrics&lyrics_id=${songId}&ctx=web6dot0&api_version=4&_format=json&_marker=0`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch lyrics');
+    
+    const data = await response.json();
+    if (data.lyrics) {
+      return {
+        id: songId,
+        text: data.lyrics.replace(/<br>/g, '\n')
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('getLyrics error:', error.message);
+    return null;
+  }
+}
+
 module.exports = {
   searchSaavn,
   getStreamUrl,
   getSaavnStreamByMetadata,
   getPlaylistTracks,
-  getRelatedTracks
+  getRelatedTracks,
+  getLyrics
 };

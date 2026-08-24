@@ -14,6 +14,7 @@ Future<void> main() async {
     androidNotificationChannelId: 'com.example.spotify_clone.channel.audio',
     androidNotificationChannelName: 'Music playback',
     androidNotificationOngoing: true,
+    androidNotificationIcon: 'mipmap/ic_launcher',
   );
 
   runApp(

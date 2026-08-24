@@ -47,8 +47,39 @@ async function processAndUploadSongs() {
       
       console.log(` - Extracted: ${title} by ${artist} (${Math.round(durationSeconds)}s)`);
 
-      // 2. Upload to Archive.org via native fetch
-      console.log(` - Uploading to Archive.org...`);
+      let customThumbnailUrl = '';
+
+      // 1.5 Extract and Upload Cover Art (if embedded)
+      if (metadata.common.picture && metadata.common.picture.length > 0) {
+        console.log(` - Found embedded cover art, uploading...`);
+        const picture = metadata.common.picture[0];
+        const imageBuffer = picture.data;
+        const imageFormat = picture.format === 'image/png' ? 'png' : 'jpg';
+        const imageFileName = `cover_${file.replace(/[^a-zA-Z0-9]/g, '')}.${imageFormat}`;
+        
+        const imageUrl = `https://s3.us.archive.org/${BUCKET_NAME}/${imageFileName}`;
+        
+        const imgResponse = await fetch(imageUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `LOW ${process.env.ARCHIVE_ACCESS_KEY}:${process.env.ARCHIVE_SECRET_KEY}`,
+            'x-amz-auto-make-bucket': '1',
+            'Content-Type': picture.format
+          },
+          body: imageBuffer
+        });
+
+        if (imgResponse.ok) {
+          // Public Archive URL
+          customThumbnailUrl = `https://archive.org/download/${BUCKET_NAME}/${imageFileName}`;
+          console.log(` - Cover art uploaded successfully!`);
+        } else {
+          console.log(` - Failed to upload cover art, using default.`);
+        }
+      }
+
+      // 2. Upload Audio to Archive.org via native fetch
+      console.log(` - Uploading audio to Archive.org...`);
       const fileBuffer = fs.readFileSync(filePath);
       
       const uploadUrl = `https://s3.us.archive.org/${BUCKET_NAME}/${encodeURIComponent(file)}`;
@@ -84,7 +115,7 @@ async function processAndUploadSongs() {
           artist: artist,
           streamUrl: streamUrl,
           duration: Math.round(durationSeconds),
-          // thumbnailUrl: 'DEFAULT_COVER_URL' // You can add custom cover art logic here
+          ...(customThumbnailUrl && { thumbnailUrl: customThumbnailUrl })
         },
         { upsert: true, new: true }
       );

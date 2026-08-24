@@ -5,9 +5,8 @@ import 'home_screen.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
 
-/// The persistent scaffold: bottom nav + mini player stay visible while
-/// the body swaps between Home / Search / Library, matching Spotify's
-/// core navigation pattern.
+/// The responsive app shell.
+/// Adapts between Desktop (Sidebar + Bottom Player) and Mobile (Bottom Nav + Mini Player).
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
 
@@ -26,6 +25,79 @@ class _RootShellState extends State<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          return _buildDesktopLayout();
+        }
+        return _buildMobileLayout();
+      },
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                _buildSidebar(),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                    child: Container(
+                      color: AppColors.surface,
+                      child: _screens[_index],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Desktop full-width mini-player (which acts as the persistent player)
+          const MiniPlayer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 240,
+      color: AppColors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 32),
+          _SidebarItem(
+            icon: Icons.home_filled,
+            label: 'Home',
+            isSelected: _index == 0,
+            onTap: () => setState(() => _index = 0),
+          ),
+          _SidebarItem(
+            icon: Icons.search,
+            label: 'Search',
+            isSelected: _index == 1,
+            onTap: () => setState(() => _index = 1),
+          ),
+          _SidebarItem(
+            icon: Icons.library_music,
+            label: 'Your Library',
+            isSelected: _index == 2,
+            onTap: () => setState(() => _index = 2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: _screens[_index],
@@ -37,12 +109,54 @@ class _RootShellState extends State<RootShell> {
             currentIndex: _index,
             onTap: (i) => setState(() => _index = i),
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
               BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
               BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SidebarItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              size: 28,
+            ),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

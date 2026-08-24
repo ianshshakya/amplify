@@ -1,6 +1,9 @@
 const express = require('express');
-const { searchSaavn, getStreamUrl, getPlaylistTracks, getRelatedTracks } = require('../utils/saavn');
+const { searchSaavn, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics } = require('../utils/saavn');
 const CreatorSong = require('../models/CreatorSong');
+const { streamCache, metadataCache } = require('../utils/cache');
+const https = require('https');
+const http = require('http');
 
 const router = express.Router();
 
@@ -21,19 +24,23 @@ router.get('/search', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: 'Missing search query' });
 
-    // Handle our special Global 100 playlist query
+    const cacheKey = `search_${query}`;
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
     if (query === '_FETCH_GLOBAL_100_') {
       const creatorSongs = await CreatorSong.find().limit(100).sort({ createdAt: -1 }).lean();
-      return res.json(creatorSongs.map(s => ({
+      const result = creatorSongs.map(s => ({
         videoId: s.videoId,
         title: s.title,
         artist: s.artist,
         thumbnailUrl: s.thumbnailUrl || 'https://archive.org/services/img/internet_archive_logo',
         duration: s.duration,
-      })));
+      }));
+      metadataCache.set(cacheKey, result);
+      return res.json(result);
     }
 
-    // Normal text search: find matching creator songs
     const regex = new RegExp(query, 'i');
     const creatorMatches = await CreatorSong.find({
       $or: [{ title: regex }, { artist: regex }]
@@ -47,13 +54,15 @@ router.get('/search', async (req, res) => {
       duration: s.duration,
     }));
 
-    // Fetch from JioSaavn
-    const songs = await searchSaavn(query, 20);
+    let songs = [];
+    try {
+      songs = await searchSaavn(query, 20);
+    } catch (saavnError) {}
     
-    // Combine them (Custom songs at the top!)
-    res.json([...formattedCreatorMatches, ...songs]);
+    const finalResult = [...formattedCreatorMatches, ...songs];
+    metadataCache.set(cacheKey, finalResult);
+    res.json(finalResult);
   } catch (error) {
-    console.error('Search error:', error.message);
     res.status(500).json({ error: 'Failed to search for songs.' });
   }
 });
@@ -64,29 +73,63 @@ router.get('/stream/:songId', async (req, res) => {
     const { songId } = req.params;
     if (!songId) return res.status(400).json({ error: 'Missing songId' });
     
-    // Intercept custom creator songs
+    const cachedUrl = streamCache.get(songId);
+    if (cachedUrl) return res.json({ streamUrl: cachedUrl, duration: 0 });
+
+    let streamUrl;
     if (songId.startsWith('creator_')) {
       const creatorSong = await CreatorSong.findOne({ videoId: songId });
-      if (creatorSong) {
-        return res.json({
-          streamUrl: creatorSong.streamUrl,
-          duration: creatorSong.duration,
-        });
-      }
+      if (creatorSong) streamUrl = creatorSong.streamUrl;
+    } else {
+      streamUrl = await getStreamUrl(songId);
     }
 
-    console.log(`[JioSaavn Engine] Fetching audio stream for ID: ${songId}`);
-    
-    // Now that the search returns JioSaavn IDs, we can fetch the stream directly!
-    const streamUrl = await getStreamUrl(songId);
-
-    res.json({
-      streamUrl: streamUrl,
-      duration: 0, 
-    });
+    if (streamUrl) {
+      streamCache.set(songId, streamUrl);
+      res.json({ streamUrl, duration: 0 });
+    } else {
+      res.status(404).json({ error: 'Stream not found' });
+    }
   } catch (error) {
-    console.error('[JioSaavn Engine] Stream error:', error.message);
     res.status(500).json({ error: 'Failed to generate stream URL' });
+  }
+});
+
+// NEW: 2.5 Chunked Stream Proxy (Insta-Play)
+router.get('/play/:songId', async (req, res) => {
+  try {
+    const { songId } = req.params;
+    let streamUrl = streamCache.get(songId);
+
+    if (!streamUrl) {
+      if (songId.startsWith('creator_')) {
+        const creatorSong = await CreatorSong.findOne({ videoId: songId });
+        if (creatorSong) streamUrl = creatorSong.streamUrl;
+      } else {
+        streamUrl = await getStreamUrl(songId);
+      }
+      if (streamUrl) streamCache.set(songId, streamUrl);
+    }
+
+    if (!streamUrl) {
+      return res.status(404).send('Stream not found');
+    }
+
+    const client = streamUrl.startsWith('https') ? https : http;
+    const options = { headers: {} };
+    if (req.headers.range) {
+      options.headers['Range'] = req.headers.range;
+    }
+
+    client.get(streamUrl, options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    }).on('error', (err) => {
+      res.status(500).send('Proxy stream error');
+    });
+
+  } catch (error) {
+    res.status(500).send('Failed to play stream');
   }
 });
 
@@ -94,9 +137,12 @@ router.get('/stream/:songId', async (req, res) => {
 router.get('/album/:id', async (req, res) => {
   try {
     const playlistId = req.params.id;
+    const cacheKey = `album_${playlistId}`;
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
     const tracks = await getPlaylistTracks(playlistId, 30);
-    
-    res.json({
+    const result = {
       id: playlistId,
       title: 'Album',
       artistName: 'Unknown',
@@ -104,9 +150,10 @@ router.get('/album/:id', async (req, res) => {
       thumbnailUrl: tracks.length > 0 ? tracks[0].thumbnailUrl : '',
       totalDuration: 'Unknown',
       tracks: tracks
-    });
+    };
+    metadataCache.set(cacheKey, result);
+    res.json(result);
   } catch (error) {
-    console.error('Album error:', error.message);
     res.status(500).json({ error: 'Failed to get album' });
   }
 });
@@ -114,10 +161,15 @@ router.get('/album/:id', async (req, res) => {
 // 4. Artist
 router.get('/artist/:id', async (req, res) => {
   try {
-    const tracks = await searchSaavn(`${req.params.id} top songs`, 10);
-    res.json({
-      id: req.params.id,
-      name: req.params.id,
+    const artistId = req.params.id;
+    const cacheKey = `artist_${artistId}`;
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
+    const tracks = await searchSaavn(`${artistId} top songs`, 10);
+    const result = {
+      id: artistId,
+      name: artistId,
       imageUrl: tracks.length > 0 ? tracks[0].thumbnailUrl : '',
       followerCount: 'Unknown',
       isVerified: false,
@@ -126,9 +178,10 @@ router.get('/artist/:id', async (req, res) => {
       albums: [],
       singles: [],
       relatedArtists: []
-    });
+    };
+    metadataCache.set(cacheKey, result);
+    res.json(result);
   } catch (error) {
-    console.error('Artist error:', error.message);
     res.status(500).json({ error: 'Failed to get artist' });
   }
 });
@@ -136,17 +189,35 @@ router.get('/artist/:id', async (req, res) => {
 // 5. Watch Next (Radio)
 router.get('/watch/:id', async (req, res) => {
   try {
-    const tracks = await getRelatedTracks(req.params.id, 20);
+    const songId = req.params.id;
+    const cacheKey = `watch_${songId}`;
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
+    const tracks = await getRelatedTracks(songId, 20);
+    metadataCache.set(cacheKey, tracks);
     res.json(tracks);
   } catch (error) {
-    console.error('Watch next error:', error.message);
     res.status(500).json({ error: 'Failed to get related tracks' });
   }
 });
 
 // 6. Lyrics
 router.get('/lyrics/:id', async (req, res) => {
-  res.status(404).json({ error: 'Lyrics not implemented yet' });
+  try {
+    const songId = req.params.id;
+    const cacheKey = `lyrics_${songId}`;
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
+    const lyrics = await getLyrics(songId);
+    if (!lyrics) return res.status(404).json({ error: 'Lyrics not found' });
+    
+    metadataCache.set(cacheKey, lyrics);
+    res.json(lyrics);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch lyrics' });
+  }
 });
 
 module.exports = router;

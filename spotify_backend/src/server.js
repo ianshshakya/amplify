@@ -9,6 +9,8 @@ const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 const musicRoutes = require('./routes/musicRoutes');
 const homeRoutes = require('./routes/homeRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -28,6 +30,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -43,7 +47,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 async function startServer() {
   await connectDB();
-  
+
   app.listen(PORT, HOST, () => console.log(`Server running on http://${HOST}:${PORT}`));
 }
 

@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../theme/app_theme.dart';
 import '../providers/home_provider.dart';
 import '../providers/player_provider.dart';
-import '../models/album.dart';
-import '../models/track.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/mini_player.dart';

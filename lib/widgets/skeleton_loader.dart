@@ -40,10 +40,10 @@ class SkeletonLoader extends StatefulWidget {
       );
 
   /// Skeleton card for grid views.
-  static Widget card({double size = 160}) => Column(
+  static Widget card({double size = 160, double borderRadius = 8}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SkeletonLoader(width: size, height: size, borderRadius: 8),
+          SkeletonLoader(width: size, height: size, borderRadius: borderRadius),
           const SizedBox(height: 8),
           SkeletonLoader(width: size * 0.75, height: 13, borderRadius: 6),
           const SizedBox(height: 4),
@@ -88,7 +88,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
         width: widget.width,
         height: widget.height,
         decoration: BoxDecoration(
-          color: baseColor.withOpacity(_anim.value * 0.15),
+          color: baseColor.withValues(alpha: _anim.value * 0.15),
           borderRadius: BorderRadius.circular(widget.borderRadius),
         ),
       ),

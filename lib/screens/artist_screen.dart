@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../theme/app_theme.dart';
 import '../providers/home_provider.dart';
-import '../providers/player_provider.dart';
-import '../models/artist.dart';
-import '../models/track.dart';
-import '../models/album.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/album_card.dart';
 import '../widgets/artist_card.dart';
@@ -76,7 +71,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                         bottom: 60,
                         left: 16,
                         child: Text(
-                          '${artist.subscribers ?? "0"} Subscribers',
+                          '${artist.subscribers} Subscribers',
                           style: const TextStyle(
                             color: Color(0xFFB3B3B3),
                             fontSize: 14,
@@ -115,7 +110,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               ),
               if (topSongs.isNotEmpty) ...[
                 SliverToBoxAdapter(
-                  child: SectionHeader(title: 'Top Songs', padding: const EdgeInsets.symmetric(horizontal: 16)),
+                  child: const SectionHeader(title: 'Top Songs', padding: EdgeInsets.symmetric(horizontal: 16)),
                 ),
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -132,7 +127,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               ],
               if (artist.albums.isNotEmpty) ...[
                 SliverToBoxAdapter(
-                  child: SectionHeader(title: 'Albums', padding: const EdgeInsets.all(16)),
+                  child: const SectionHeader(title: 'Albums', padding: EdgeInsets.all(16)),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -160,7 +155,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               ],
               if (artist.singles.isNotEmpty) ...[
                 SliverToBoxAdapter(
-                  child: SectionHeader(title: 'Singles', padding: const EdgeInsets.all(16)),
+                  child: const SectionHeader(title: 'Singles', padding: EdgeInsets.all(16)),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -188,7 +183,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               ],
               if (artist.relatedArtists.isNotEmpty) ...[
                 SliverToBoxAdapter(
-                  child: SectionHeader(title: 'Related Artists', padding: const EdgeInsets.all(16)),
+                  child: const SectionHeader(title: 'Related Artists', padding: EdgeInsets.all(16)),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(

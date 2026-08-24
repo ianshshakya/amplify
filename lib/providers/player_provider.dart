@@ -96,6 +96,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
       // If we finished playing the entire concatenating source, check what to do
       if (audioState.processingState == ProcessingState.completed) {
+        if (state.currentTrack != null) {
+           _musicService.logListeningEvent(state.currentTrack!, 'COMPLETE', completionPercent: 100).catchError((_) {});
+        }
+        
         if (state.repeatMode == RepeatMode.one) {
           _audioPlayer.seek(Duration.zero, index: _audioPlayer.currentIndex);
           _audioPlayer.play();
@@ -159,6 +163,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
       _userDataService.logWatchHistory(track).catchError((_) {});
 
+      // Dispatch PLAY event to the self-learning engine
+      _musicService.logListeningEvent(track, 'PLAY').catchError((_) {});
+
       // Prefetch the next track right away
       _prefetchNext();
 
@@ -181,22 +188,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         tag: _makeMediaItem(track),
       );
     } else {
-      String streamUrl;
-      if (track.streamUrl != null && track.streamUrl!.isNotEmpty) {
-        streamUrl = track.streamUrl!;
-      } else {
-        try {
-          final apiClient = ApiClient();
-          final res = await apiClient.get('/music/stream/${track.videoId}');
-          if (res != null && res['streamUrl'] != null) {
-            streamUrl = res['streamUrl'];
-          } else {
-            throw Exception('Stream URL not found in backend response');
-          }
-        } catch (e) {
-          throw StreamUnavailableException(500, 'Failed to fetch stream from backend: $e');
-        }
-      }
+      // Use the direct streaming proxy to stream bytes instantly in packets
+      final streamUrl = track.streamUrl != null && track.streamUrl!.isNotEmpty
+          ? track.streamUrl!
+          : '${ApiClient.baseUrl}/music/play/${track.videoId}';
+
       return AudioSource.uri(
         Uri.parse(streamUrl),
         tag: _makeMediaItem(track),
@@ -267,6 +263,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> seek(Duration position) => _audioPlayer.seek(position);
 
   Future<void> playNext() async {
+    if (state.currentTrack != null) {
+      // If we manually play next, we consider it a SKIP or a COMPLETE based on position
+      final percent = state.duration.inMilliseconds > 0 
+          ? (_audioPlayer.position.inMilliseconds / state.duration.inMilliseconds) * 100 
+          : 0;
+      
+      final eventType = percent >= 90 ? 'COMPLETE' : 'SKIP';
+      _musicService.logListeningEvent(
+        state.currentTrack!, 
+        eventType, 
+        durationMs: _audioPlayer.position.inMilliseconds,
+        completionPercent: percent.toInt()
+      ).catchError((_) {});
+    }
+
     if (_audioPlayer.hasNext) {
       await _audioPlayer.seekToNext();
     } else {
@@ -331,7 +342,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   // ─── Private helpers ───────────────────────────────────────────────────────
 
-  /// Silently append YT Music radio tracks when the queue runs out.
+  /// Silently append algorithmic infinite radio tracks when the queue runs out.
   Future<void> _appendRadioTracksIfNeeded() async {
     if (_isPrefetching) return;
     final current = state.currentTrack;
@@ -339,7 +350,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     
     _isPrefetching = true;
     try {
-      final radio = await _musicService.getWatchPlaylist(current.videoId);
+      // Use the new Infinite Radio algorithm instead of static watch playlists
+      final radio = await _musicService.getSongRadio(current.videoId);
       if (radio.isNotEmpty) {
         final newQueue = [...state.queue, ...radio];
         state = state.copyWith(queue: newQueue);
@@ -356,7 +368,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   MediaItem _makeMediaItem(Track track) => MediaItem(
-        id: '${track.videoId}_${DateTime.now().microsecondsSinceEpoch}',
+        id: track.videoId,
         title: track.title,
         artist: track.artist,
         artUri: Uri.tryParse(track.thumbnailUrl),

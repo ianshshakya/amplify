@@ -192,6 +192,95 @@ class MusicService {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
+  // ─── Telemetry ─────────────────────────────────────────────────────────────
+  
+  /// Dispatches a listening event to the backend's self-learning engine.
+  Future<void> logListeningEvent(
+    Track track, 
+    String eventType, 
+    {
+      int? durationMs, 
+      int? completionPercent, 
+      String? context,
+      String? sessionId
+    }
+  ) async {
+    try {
+      await _api.post('/analytics/events', body: {
+        'song': {
+          'videoId': track.videoId,
+          'title': track.title,
+          'artist': track.artist,
+          'thumbnailUrl': track.thumbnailUrl,
+          'durationMs': track.duration.inMilliseconds,
+          'source': track.source
+        },
+        'eventType': eventType,
+        'durationPlayedMs': durationMs ?? 0,
+        'completionPercent': completionPercent ?? 0,
+        'context': context,
+        'sessionId': sessionId,
+      });
+    } catch (e) {
+      debugPrint('Failed to log $eventType event: $e');
+    }
+  }
+
+  // ─── Intelligent Recommendations ───────────────────────────────────────────
+
+  Future<CuratedPlaylistData?> getDailyMix() async {
+    try {
+      final result = await _api.get('/recommendations/daily-mix');
+      if (result == null || result['songs'] == null) return null;
+      
+      return CuratedPlaylistData(
+        id: result['id'] ?? 'daily-mix',
+        title: result['title'] ?? 'Daily Mix',
+        description: result['description'] ?? 'Made for you',
+        thumbnailUrl: result['thumbnailUrl'] ?? '',
+        songs: (result['songs'] as List).map((v) => _trackFromJson(v as Map<String, dynamic>)).toList(),
+      );
+    } catch (e) {
+      debugPrint('Daily Mix error: $e');
+      return null;
+    }
+  }
+
+  Future<Track?> getOneSongAway() async {
+    try {
+      final result = await _api.get('/recommendations/one-song-away');
+      if (result == null) return null;
+      return _trackFromJson(result as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('One Song Away error: $e');
+      return null;
+    }
+  }
+
+  Future<List<Track>> getSongRadio(String songId) async {
+    try {
+      final results = await _api.get('/recommendations/radio/song/$songId');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Song Radio error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Track>> getArtistRadio(String artistName) async {
+    try {
+      final results = await _api.get('/recommendations/radio/artist/${Uri.encodeComponent(artistName)}');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Artist Radio error: $e');
+      return [];
+    }
+  }
+
+  // ─── JSON Parsing ──────────────────────────────────────────────────────────
+
   Track _trackFromJson(Map<String, dynamic> json) {
     // Duration can come as milliseconds ('durationMs') or raw seconds/string ('duration')
     Duration dur;
@@ -214,13 +303,17 @@ class MusicService {
       dur = const Duration(seconds: 180);
     }
 
+    // Normalize the source so the rest of the application doesn't have to care
+    final source = json['source'] as String? ?? 
+        ((json['videoId'] as String? ?? '').startsWith('creator_') ? 'archive' : 'saavn');
+
     return Track(
       videoId: json['videoId'] as String? ?? '',
       title: json['title'] as String? ?? 'Unknown',
       artist: json['artist'] as String? ?? 'Unknown Artist',
       thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
       duration: dur,
-      source: json['source'] as String?,
+      source: source,
       streamUrl: json['streamUrl'] as String?,
       bitrate: (json['bitrate'] as num?)?.toInt(),
       artistId: json['artistId'] as String?,

@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
 import 'login_screen.dart';
 import 'root_shell.dart';
+import 'splash_transition.dart';
 
 /// Entry point that watches auth state and routes to login or main shell.
 class AuthGate extends ConsumerStatefulWidget {
@@ -27,13 +28,18 @@ class _AuthGateState extends ConsumerState<AuthGate> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
 
-    return switch (auth.status) {
-      AuthStatus.checking => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+    final isReady = auth.status != AuthStatus.checking;
+
+    Widget child = switch (auth.status) {
+      AuthStatus.checking => const Scaffold(backgroundColor: Colors.black),
       AuthStatus.loggedOut => const LoginScreen(),
       AuthStatus.loggedIn => _LoggedInShell(),
     };
+
+    return CinematicSplashOverlay(
+      isReady: isReady,
+      child: child,
+    );
   }
 }
 

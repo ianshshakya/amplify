@@ -40,9 +40,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     checkAuthState();
   }
 
-  Future<void> _loadRecent() async {
-    // Left empty/ignored as it was a copy error in prompt, not needed for AuthNotifier
-  }
 
   Future<void> checkAuthState() async {
     final user = await _authService.fetchCurrentUser();

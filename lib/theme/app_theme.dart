@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Central color palette — Spotify-inspired dark theme with green accent.
+/// Central color palette — Premium Spotify-inspired dark theme
 class AppColors {
   // Core surfaces
-  static const Color background = Color(0xFF121212);
-  static const Color surface = Color(0xFF181818);
+  static const Color background = Color(0xFF000000); // Deep black
+  static const Color surface = Color(0xFF121212); // Slightly elevated
   static const Color surfaceHighlight = Color(0xFF282828);
   static const Color surfaceElevated = Color(0xFF333333);
 
-  // Brand green
+  // Brand Accent (Spotify-like Green)
   static const Color primary = Color(0xFF1DB954);
   static const Color primaryDark = Color(0xFF158A3E);
-  static const Color primaryLight = Color(0xFF2EE672);
+  static const Color primaryLight = Color(0xFF1ED760); // Brighter hover/active state
 
   // Text
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0xFFB3B3B3);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFA7A7A7); // Softer grey
   static const Color textDisabled = Color(0xFF535353);
 
   // Accents & states
-  static const Color error = Color(0xFFE2534C);
-  static const Color warning = Color(0xFFFFC107);
-  static const Color heart = Color(0xFFE91E63);
+  static const Color error = Color(0xFFE91429);
+  static const Color warning = Color(0xFFFFA42B);
+  static const Color heart = Color(0xFF1DB954); // Green for liked
 
-  // Light theme surfaces
-  static const Color lightBackground = Color(0xFFF8F9FA);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSurfaceHighlight = Color(0xFFEEEEEE);
-  static const Color lightTextPrimary = Color(0xFF121212);
+  // Light theme surfaces (if supported, though we focus on dark)
+  static const Color lightBackground = Color(0xFFFFFFFF);
+  static const Color lightSurface = Color(0xFFF6F6F6);
+  static const Color lightSurfaceHighlight = Color(0xFFEBEBEB);
+  static const Color lightTextPrimary = Color(0xFF000000);
   static const Color lightTextSecondary = Color(0xFF535353);
 }
 
@@ -67,89 +67,99 @@ class AppTheme {
         surface: surface,
         onSurface: textPrimary,
       ),
-      // Google Fonts — Outfit is clean & modern, similar to Spotify's Circular
-      textTheme: GoogleFonts.outfitTextTheme(
+      // Inter provides that clean, geometric, highly legible look
+      textTheme: GoogleFonts.interTextTheme(
         TextTheme(
-          displayLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-          displayMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-          displaySmall: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-          headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 28),
-          headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 24),
-          headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w600, fontSize: 20),
-          titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 22),
+          displayLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -1.0),
+          displayMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+          displaySmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
+          headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 32, letterSpacing: -0.5),
+          headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 24, letterSpacing: -0.5),
+          headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 20, letterSpacing: -0.5),
+          titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
           titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
           titleSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w500, fontSize: 14),
-          bodyLarge: TextStyle(color: textPrimary, fontSize: 16),
-          bodyMedium: TextStyle(color: textPrimary, fontSize: 14),
-          bodySmall: TextStyle(color: textSecondary, fontSize: 12),
-          labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          labelSmall: TextStyle(color: textSecondary, fontSize: 11),
+          bodyLarge: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w400),
+          bodyMedium: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w400),
+          bodySmall: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w400),
+          labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          labelSmall: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: bg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: textPrimary,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: surface,
+        backgroundColor: Colors.black.withOpacity(0.9), // Glass-like base
         selectedItemColor: textPrimary,
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.outfit(fontSize: 11),
+        elevation: 0,
+        selectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
       ),
       cardTheme: CardThemeData(
-        color: surfaceH,
+        color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       iconTheme: IconThemeData(color: textPrimary),
       sliderTheme: SliderThemeData(
-        trackHeight: 3,
+        trackHeight: 4,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-        activeTrackColor: AppColors.primary,
-        inactiveTrackColor: isDark ? Colors.white24 : Colors.black26,
-        thumbColor: AppColors.primary,
-        overlayShape: SliderComponentShape.noOverlay,
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+        activeTrackColor: textPrimary,
+        inactiveTrackColor: isDark ? const Color(0xFF4D4D4D) : Colors.black26,
+        thumbColor: textPrimary,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.5),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
-          side: BorderSide(color: isDark ? Colors.white30 : Colors.black26),
+          side: BorderSide(color: isDark ? const Color(0xFF727272) : Colors.black26, width: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? Colors.white : Colors.black12,
-        hintStyle: TextStyle(color: isDark ? Colors.black54 : Colors.black38),
+        fillColor: surfaceH,
+        hintStyle: TextStyle(color: textSecondary),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(4),
           borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceH,
         selectedColor: AppColors.primary,
-        labelStyle: GoogleFonts.outfit(fontSize: 13, color: textPrimary),
+        labelStyle: GoogleFonts.inter(fontSize: 13, color: textPrimary, fontWeight: FontWeight.w500),
         side: BorderSide.none,
         shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
   }

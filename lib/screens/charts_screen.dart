@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/home_provider.dart';
-import '../models/track.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/mini_player.dart';
@@ -31,9 +30,13 @@ class ChartsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final track = tracks[index];
               Color rankColor = Colors.white;
-              if (index == 0) rankColor = Colors.amber;
-              else if (index == 1) rankColor = Colors.grey;
-              else if (index == 2) rankColor = Colors.brown;
+              if (index == 0) {
+                rankColor = Colors.amber;
+              } else if (index == 1) {
+                rankColor = Colors.grey;
+              } else if (index == 2) {
+                rankColor = Colors.brown;
+              }
 
               return Row(
                 children: [
