@@ -20,8 +20,8 @@ class ApiException implements Exception {
 class ApiClient {
   // If you are using the Android Emulator, you MUST change this back to 'http://10.0.2.2:5000/api'
   // The base URL of the backend. Switch this depending on your environment.
-  //static const String baseUrl = 'https://amplifysaas.onrender.com/api';
-  static const String baseUrl = 'http://10.65.176.109:5000/api';
+  static const String baseUrl = 'https://amplifysaas.onrender.com/api';
+  //static const String baseUrl = 'http://10.65.176.109:5000/api';
   final TokenStorage _tokenStorage = TokenStorage();
 
   Future<Map<String, String>> _headers({bool auth = true}) async {

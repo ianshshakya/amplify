@@ -1,5 +1,11 @@
 const CryptoJS = require('crypto-js');
 
+const saavnHeaders = {
+  'X-Forwarded-For': '103.15.228.1', // Delhi IP to bypass geo-restrictions on Render
+  'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8,bn;q=0.7',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+};
+
 // Helper to decode HTML entities in titles
 function decodeHTMLEntities(text) {
   if (!text) return text;
@@ -35,7 +41,7 @@ function mapSaavnResult(data) {
 
 async function searchSaavn(query, limit = 20) {
   const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=${limit}&p=1&_format=json&_marker=0&ctx=web6dot0`;
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: saavnHeaders });
   if (!response.ok) throw new Error('Failed to fetch from JioSaavn search');
   const data = await response.json();
   
@@ -70,7 +76,7 @@ function decryptUrl(encryptedUrl) {
 
 async function getStreamUrl(songId) {
   const url = `https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${songId}&_format=json&_marker=0&ctx=web6dot0`;
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: saavnHeaders });
   if (!response.ok) throw new Error('Failed to fetch song details');
   
   const data = await response.json();
@@ -111,7 +117,7 @@ async function getSaavnStreamByMetadata(title, artist) {
   console.log(`[JioSaavn Hybrid] Searching for audio: "${query}"`);
   
   const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=1&p=1&_format=json&_marker=0&ctx=web6dot0`;
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: saavnHeaders });
   
   if (!response.ok) throw new Error('JioSaavn search failed');
   const data = await response.json();
@@ -136,7 +142,7 @@ async function getSaavnStreamByMetadata(title, artist) {
 async function getPlaylistTracks(playlistId, limit = 30) {
   const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&listid=${playlistId}&_format=json&_marker=0&ctx=web6dot0`;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: saavnHeaders });
     if (!response.ok) return searchSaavn('Top Hits', limit);
     
     const data = await response.json();
@@ -152,7 +158,7 @@ async function getRelatedTracks(songId, limit = 20) {
   try {
     const stationUrl = `https://www.jiosaavn.com/api.php?__call=webradio.createEntityStation&entity_id=${songId}&entity_type=queue&_format=json&_marker=0&ctx=web6dot0`;
     
-    const response = await fetch(stationUrl);
+    const response = await fetch(stationUrl, { headers: saavnHeaders });
     if (!response.ok) return searchSaavn('Top songs', limit);
     
     const data = await response.json();
@@ -160,7 +166,7 @@ async function getRelatedTracks(songId, limit = 20) {
     if (!stationId) return searchSaavn('Top songs', limit);
     
     const tracksUrl = `https://www.jiosaavn.com/api.php?__call=webradio.getSong&stationid=${stationId}&k=${limit}&_format=json&_marker=0&ctx=web6dot0`;
-    const tracksRes = await fetch(tracksUrl);
+    const tracksRes = await fetch(tracksUrl, { headers: saavnHeaders });
     const tracksData = await tracksRes.json();
     
     const results = [];
@@ -181,7 +187,7 @@ async function getRelatedTracks(songId, limit = 20) {
 async function getLyrics(songId) {
   try {
     const url = `https://www.jiosaavn.com/api.php?__call=lyrics.getLyrics&lyrics_id=${songId}&ctx=web6dot0&api_version=4&_format=json&_marker=0`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: saavnHeaders });
     if (!response.ok) throw new Error('Failed to fetch lyrics');
     
     const data = await response.json();
