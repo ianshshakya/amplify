@@ -1,4 +1,5 @@
 const CryptoJS = require('crypto-js');
+const { getTracks } = require('spotify-url-info')(fetch);
 
 const saavnHeaders = {
   'X-Forwarded-For': '103.15.228.1', // Delhi IP to bypass geo-restrictions on Render
@@ -165,17 +166,27 @@ async function getRelatedTracks(songId, limit = 20) {
     const stationId = data.stationid;
     if (!stationId) return searchSaavn('Top songs', limit);
     
-    const tracksUrl = `https://www.jiosaavn.com/api.php?__call=webradio.getSong&stationid=${stationId}&k=${limit}&_format=json&_marker=0&ctx=web6dot0`;
+    // Fetch a large pool of related tracks (50) to sort by popularity
+    const tracksUrl = `https://www.jiosaavn.com/api.php?__call=webradio.getSong&stationid=${stationId}&k=50&_format=json&_marker=0&ctx=web6dot0`;
     const tracksRes = await fetch(tracksUrl, { headers: saavnHeaders });
     const tracksData = await tracksRes.json();
     
-    const results = [];
+    let rawSongs = [];
     for (const key in tracksData) {
       if (tracksData[key] && tracksData[key].song) {
-        // webradio wraps the actual song object in another object
-        results.push(mapSaavnResult(tracksData[key].song));
+        rawSongs.push(tracksData[key].song);
       }
     }
+    
+    // Sort the related tracks by most streamed/listened (play_count)
+    rawSongs.sort((a, b) => {
+      const playA = parseInt(a.play_count, 10) || 0;
+      const playB = parseInt(b.play_count, 10) || 0;
+      return playB - playA; // descending
+    });
+    
+    // Take the top requested limit and map them
+    const results = rawSongs.slice(0, limit).map(mapSaavnResult);
     
     if (results.length === 0) return searchSaavn('Top songs', limit);
     return results;
@@ -204,11 +215,58 @@ async function getLyrics(songId) {
   }
 }
 
+async function fetchSpotifyPlaylistTracks(spotifyUrl, limit = 50, fallbackSaavnId = null) {
+  try {
+    const tracks = await getTracks(spotifyUrl);
+    
+    // Take up to 'limit' tracks
+    const topTracks = tracks.slice(0, limit);
+    
+    // We fetch them concurrently in small batches to avoid rate limiting
+    const results = [];
+    for (let i = 0; i < topTracks.length; i += 5) {
+      const chunk = topTracks.slice(i, i + 5);
+      const chunkPromises = chunk.map(async (t) => {
+        try {
+          const title = t.name || '';
+          const artist = t.artist || '';
+          
+          // 1. Try exact match with artist
+          let searchRes = await searchSaavn(`${title} ${artist}`.trim(), 1);
+          if (searchRes && searchRes.length > 0) return searchRes[0];
+          
+          // 2. Try looser match with just title
+          searchRes = await searchSaavn(title.trim(), 1);
+          if (searchRes && searchRes.length > 0) return searchRes[0];
+          
+          return null;
+        } catch (err) {
+          return null;
+        }
+      });
+      
+      const chunkResults = await Promise.all(chunkPromises);
+      results.push(...chunkResults.filter(r => r != null));
+    }
+    
+    if (results.length === 0) throw new Error('No tracks found via cross-referencing');
+    return results;
+  } catch (error) {
+    console.error('Spotify fetch error:', error);
+    // Fallback to Saavn Playlist if scraping completely fails
+    if (fallbackSaavnId) {
+      return getPlaylistTracks(fallbackSaavnId, limit);
+    }
+    return searchSaavn('Top Hits', limit);
+  }
+}
+
 module.exports = {
   searchSaavn,
   getStreamUrl,
   getSaavnStreamByMetadata,
   getPlaylistTracks,
   getRelatedTracks,
-  getLyrics
+  getLyrics,
+  fetchSpotifyPlaylistTracks
 };

@@ -24,6 +24,7 @@
     "mongoose": "^8.5.2",
     "music-metadata": "^11.15.0",
     "saavnapi": "^1.0.1",
+    "spotify-url-info": "^3.3.3",
     "string-similarity": "^4.0.4"
   },
   "devDependencies": {
