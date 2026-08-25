@@ -105,6 +105,7 @@ class Track {
 class CuratedPlaylist {
   final String id;
   final String title;
+  final String type;
   final String thumbnailUrl;
   final String description;
   final String query;
@@ -112,6 +113,7 @@ class CuratedPlaylist {
   const CuratedPlaylist({
     required this.id,
     required this.title,
+    this.type = 'Mixes For You',
     required this.thumbnailUrl,
     required this.description,
     this.query = '',
@@ -121,6 +123,7 @@ class CuratedPlaylist {
       CuratedPlaylist(
         id: json['id'] as String? ?? '',
         title: json['title'] as String? ?? '',
+        type: json['type'] as String? ?? 'Mixes For You',
         thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
         description: json['description'] as String? ?? '',
         query: json['query'] as String? ?? '',
@@ -133,6 +136,7 @@ class CuratedPlaylistData extends CuratedPlaylist {
   const CuratedPlaylistData({
     required super.id,
     required super.title,
+    super.type = 'Mixes For You',
     required super.thumbnailUrl,
     required super.description,
     required this.songs,
@@ -142,6 +146,7 @@ class CuratedPlaylistData extends CuratedPlaylist {
       CuratedPlaylistData(
         id: json['id'] as String? ?? '',
         title: json['title'] as String? ?? '',
+        type: json['type'] as String? ?? 'Mixes For You',
         thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
         description: json['description'] as String? ?? '',
         songs: (json['songs'] as List<dynamic>? ?? [])

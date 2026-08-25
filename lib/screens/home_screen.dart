@@ -286,41 +286,64 @@ class HomeScreen extends ConsumerWidget {
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // ─── Albums & Mixes For You (Square Cards) ────────────────────
-            const SliverToBoxAdapter(
-              child: SectionHeader(title: 'Mixes For You'),
-            ),
+            // ─── Dynamic Categories (e.g. Trending, Top Charts) ───────────────
             SliverToBoxAdapter(
               child: homeFeed.when(
                 data: (sections) {
-                  // Skip the first 5 used in Quick Picks
-                  final remaining = sections.skip(5).toList();
-                  if (remaining.isEmpty) return const SizedBox.shrink();
+                  if (sections.isEmpty) return const SizedBox.shrink();
 
-                  return SizedBox(
-                    height: 240,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: remaining.length,
-                      itemBuilder: (context, index) {
-                        return _PlaylistSquareCard(playlist: remaining[index]);
-                      },
-                    ),
+                  // Group all playlists by their type
+                  final Map<String, List<CuratedPlaylist>> grouped = {};
+                  for (final p in sections) {
+                    // Initialize list if not present
+                    if (!grouped.containsKey(p.type)) {
+                      grouped[p.type] = [];
+                    }
+                    grouped[p.type]!.add(p);
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: grouped.entries.map((entry) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader(title: entry.key),
+                          SizedBox(
+                            height: 240,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: entry.value.length,
+                              itemBuilder: (context, index) {
+                                return _PlaylistSquareCard(playlist: entry.value[index]);
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    }).toList(),
                   );
                 },
-                loading: () => SizedBox(
-                  height: 240,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: 4,
-                    itemBuilder: (_, __) => Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: SkeletonLoader.card(size: 160, borderRadius: 8),
+                loading: () => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(title: 'Loading...'),
+                    SizedBox(
+                      height: 240,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: 4,
+                        itemBuilder: (_, __) => Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: SkeletonLoader.card(size: 160, borderRadius: 8),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
                 error: (_, __) => const SizedBox.shrink(),
               ),
