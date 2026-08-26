@@ -7,6 +7,7 @@ import '../services/music_service.dart';
 import '../services/offline_service.dart';
 import '../services/user_data_service.dart';
 import '../services/api_client.dart';
+import 'recommendation_provider.dart' show sessionContextProvider;
 
 enum RepeatMode { off, all, one }
 enum PlaybackStatus { idle, loading, playing, paused, error }
@@ -65,11 +66,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   final MusicService _musicService = MusicService();
   final UserDataService _userDataService = UserDataService();
   ConcatenatingAudioSource? _playlistSource;
+  Ref? _ref; // Injected so we can access sessionContextProvider
 
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
   bool _isPrefetching = false;
 
-  PlayerNotifier() : super(const PlayerState()) {
+  PlayerNotifier({Ref? ref}) : super(const PlayerState()) {
+    _ref = ref;
     _audioPlayer.playerStateStream.listen((audioState) {
       PlaybackStatus nextStatus = state.status;
       if (state.status != PlaybackStatus.error) {
@@ -115,15 +118,28 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       if (state.status == PlaybackStatus.loading && pos.inMilliseconds > 0 && _audioPlayer.playing) {
         state = state.copyWith(status: PlaybackStatus.playing);
       }
+
+      // Adaptive Prefetching: If we are on the last track in the queue, and past 70% completion, fetch next tracks early.
+      // This prevents any loading spinner when the song ends.
+      final duration = _audioPlayer.duration?.inMilliseconds ?? 0;
+      if (duration > 0 && state.currentIndex == state.queue.length - 1 && !_isPrefetching) {
+        final percent = (pos.inMilliseconds / duration) * 100;
+        if (percent > 70) {
+          _appendRadioTracksIfNeeded();
+        }
+      }
     });
 
     _audioPlayer.currentIndexStream.listen((index) {
       if (index != null && index < state.queue.length) {
+        final newTrack = state.queue[index];
         state = state.copyWith(
           currentIndex: index,
-          currentTrack: state.queue[index],
+          currentTrack: newTrack,
         );
-        _prefetchNext(); // Trigger prefetch for the next song when current changes
+        _prefetchNext();
+        // Update session context so radio knows what we've been listening to
+        _ref?.read(sessionContextProvider.notifier).addTrack(newTrack);
       }
     });
 
@@ -265,16 +281,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> playNext() async {
     if (state.currentTrack != null) {
       // If we manually play next, we consider it a SKIP or a COMPLETE based on position
-      final percent = state.duration.inMilliseconds > 0 
-          ? (_audioPlayer.position.inMilliseconds / state.duration.inMilliseconds) * 100 
-          : 0;
-      
-      final eventType = percent >= 90 ? 'COMPLETE' : 'SKIP';
+      final durationMs = state.duration.inMilliseconds;
+      final posMs = _audioPlayer.position.inMilliseconds;
+      final percent = durationMs > 0 ? (posMs / durationMs) * 100 : 0;
+
+      // Log EARLY_SKIP if skipped before 20% — strong negative signal
+      final eventType = percent >= 90 ? 'COMPLETE' : (percent < 20 ? 'EARLY_SKIP' : 'SKIP');
       _musicService.logListeningEvent(
-        state.currentTrack!, 
-        eventType, 
-        durationMs: _audioPlayer.position.inMilliseconds,
-        completionPercent: percent.toInt()
+        state.currentTrack!,
+        eventType,
+        durationMs: posMs,
+        completionPercent: percent.toInt(),
       ).catchError((_) {});
     }
 
@@ -347,19 +364,26 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (_isPrefetching) return;
     final current = state.currentTrack;
     if (current == null) return;
-    
+
     _isPrefetching = true;
     try {
-      // Use the new Infinite Radio algorithm instead of static watch playlists
-      final radio = await _musicService.getSongRadio(current.videoId);
+      // Use session context for smarter radio (knows what's been playing)
+      final sessionCtx = _ref?.read(sessionContextProvider);
+      final radio = await _musicService.getNextTracks(current, sessionCtx);
+
       if (radio.isNotEmpty) {
-        final newQueue = [...state.queue, ...radio];
-        state = state.copyWith(queue: newQueue);
-        
-        // Add the first radio track to the playlist source so it plays next seamlessly
-        final nextTrack = radio.first;
-        final source = await _buildAudioSource(nextTrack);
-        await _playlistSource?.add(source);
+        // Filter out songs already in the queue
+        final existingIds = state.queue.map((t) => t.videoId).toSet();
+        final newTracks = radio.where((t) => !existingIds.contains(t.videoId)).toList();
+
+        if (newTracks.isNotEmpty) {
+          final newQueue = [...state.queue, ...newTracks];
+          state = state.copyWith(queue: newQueue);
+
+          final nextTrack = newTracks.first;
+          final source = await _buildAudioSource(nextTrack);
+          await _playlistSource?.add(source);
+        }
       }
     } catch (_) {
     } finally {
@@ -383,5 +407,5 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 }
 
 final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>(
-  (ref) => PlayerNotifier(),
+  (ref) => PlayerNotifier(ref: ref),
 );

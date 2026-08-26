@@ -39,11 +39,11 @@ class DownloadIndicator extends ConsumerWidget {
             ),
           ),
         ),
-      DownloadStatus.done => const IconButton(
-          icon: Icon(Icons.download_done, size: 22),
-          color: AppColors.primary,
-          tooltip: 'Downloaded',
-          onPressed: null,
+      DownloadStatus.done => IconButton(
+          icon: const Icon(Icons.download_done, size: 22),
+          color: Colors.green,
+          tooltip: 'Downloaded - Tap to remove',
+          onPressed: () => ref.read(downloadProvider.notifier).removeDownload(track.videoId),
         ),
       DownloadStatus.error => IconButton(
           icon: const Icon(Icons.error_outline, size: 22),

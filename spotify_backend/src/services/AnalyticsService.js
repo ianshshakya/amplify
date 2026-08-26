@@ -62,11 +62,20 @@ class AnalyticsService {
       case 'SKIP':
         update.$inc = { lifetimeSkips: 1, popularityScore: -2 };
         break;
+      case 'EARLY_SKIP':  // Skipped before 20% completion
+        update.$inc = { lifetimeSkips: 1, popularityScore: -5 };
+        break;
+      case 'REPLAY':  // User played the same song again
+        update.$inc = { lifetimePlays: 1, popularityScore: 4 };
+        break;
       case 'LIKE':
         update.$inc = { lifetimeLikes: 1, popularityScore: 3 };
         break;
       case 'UNLIKE':
         update.$inc = { lifetimeLikes: -1, popularityScore: -3 };
+        break;
+      case 'DISLIKE':
+        update.$inc = { lifetimeLikes: -1, popularityScore: -5 };
         break;
       default:
         return; // Ignore PAUSE or custom events for aggregates

@@ -31,31 +31,113 @@ function mapSaavnResult(data) {
   }
   if (isNaN(duration)) duration = 0;
 
+  // Normalize play count — JioSaavn returns strings like "100,000" or raw numbers
+  let playCount = 0;
+  if (data.play_count !== undefined && data.play_count !== null) {
+    const raw = String(data.play_count).replace(/,/g, '');
+    playCount = parseInt(raw, 10) || 0;
+  }
+
+  // Extract year from release_date or year field (format: "YYYY-MM-DD" or "YYYY")
+  let releaseYear = null;
+  const rawYear = data.year || data.release_date || '';
+  if (rawYear) {
+    const yearMatch = String(rawYear).match(/^(\d{4})/);
+    if (yearMatch) releaseYear = parseInt(yearMatch[1], 10);
+  }
+
+  // Normalize language — JioSaavn uses lowercase like 'hindi', 'english', 'punjabi'
+  const language = data.language
+    ? data.language.charAt(0).toUpperCase() + data.language.slice(1).toLowerCase()
+    : null;
+
+  // Album info
+  const album = data.album ? decodeHTMLEntities(data.album) : null;
+
   return {
     videoId: data.id,
     title: decodeHTMLEntities(data.song || data.title || 'Unknown Title'),
     artist: decodeHTMLEntities(data.primary_artists || data.subtitle || 'Unknown Artist'),
     thumbnailUrl: thumbnailUrl,
     duration: duration,
+    // ── Enrichment fields (used by AmplifyNormalizer) ──
+    playCount: playCount,
+    releaseYear: releaseYear,
+    language: language,
+    album: album,
+    isExplicit: data.explicit_content === 1 || data.explicit_content === '1',
   };
 }
 
 async function searchSaavn(query, limit = 20) {
-  const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=${limit}&p=1&_format=json&_marker=0&ctx=web6dot0`;
-  const response = await fetch(url, { headers: saavnHeaders });
-  if (!response.ok) throw new Error('Failed to fetch from JioSaavn search');
-  const data = await response.json();
+  let allResults = [];
+  let page = 1;
+  const maxPerPage = 40;
   
-  if (!data.results) return [];
+  while (allResults.length < limit) {
+    const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=${maxPerPage}&p=${page}&_format=json&_marker=0&ctx=web6dot0`;
+    const response = await fetch(url, { headers: saavnHeaders });
+    if (!response.ok) break;
+    
+    const data = await response.json();
+    if (!data.results || data.results.length === 0) break;
+    
+    allResults = allResults.concat(data.results);
+    page++;
+    
+    if (data.results.length < maxPerPage) break; // No more results
+  }
+  
+  // Truncate to exact limit if we over-fetched
+  if (allResults.length > limit) {
+    allResults = allResults.slice(0, limit);
+  }
   
   // Sort results by play_count descending so original/famous songs appear first
-  const sortedResults = data.results.sort((a, b) => {
-    const playA = parseInt(a.play_count, 10) || 0;
-    const playB = parseInt(b.play_count, 10) || 0;
+  const sortedResults = allResults.sort((a, b) => {
+    const playA = parseInt(String(a.play_count || '0').replace(/,/g, ''), 10) || 0;
+    const playB = parseInt(String(b.play_count || '0').replace(/,/g, ''), 10) || 0;
     return playB - playA;
   });
   
   return sortedResults.map(mapSaavnResult);
+}
+
+/**
+ * Search with optional language and year range filters.
+ * Fetches a larger candidate pool and post-filters by the given constraints.
+ */
+async function searchSaavnWithFilters(query, limit = 20, options = {}) {
+  const { language = null, minYear = null, maxYear = null } = options;
+
+  // Fetch a larger pool to account for post-filter attrition
+  const poolSize = Math.min(limit * 5, 200);
+  const rawResults = await searchSaavn(query, poolSize);
+
+  let filtered = rawResults;
+
+  if (language) {
+    const targetLang = language.toLowerCase();
+    filtered = filtered.filter(r => r.language && r.language.toLowerCase() === targetLang);
+  }
+
+  if (minYear !== null) {
+    filtered = filtered.filter(r => r.releaseYear !== null && r.releaseYear >= minYear);
+  }
+
+  if (maxYear !== null) {
+    filtered = filtered.filter(r => r.releaseYear !== null && r.releaseYear <= maxYear);
+  }
+
+  // If hard-filtering removed too many results, loosen the year constraint and try again
+  if (filtered.length < Math.min(limit, 5) && (minYear !== null || maxYear !== null)) {
+    console.log(`[Saavn] Year filter too strict for "${query}", using unfiltered pool.`);
+    filtered = language
+      ? rawResults.filter(r => r.language && r.language.toLowerCase() === (language || '').toLowerCase())
+      : rawResults;
+  }
+
+  return filtered.slice(0, limit);
 }
 
 function decryptUrl(encryptedUrl) {
@@ -141,15 +223,29 @@ async function getSaavnStreamByMetadata(title, artist) {
 }
 
 async function getPlaylistTracks(playlistId, limit = 30) {
-  const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&listid=${playlistId}&_format=json&_marker=0&ctx=web6dot0`;
+  let allTracks = [];
+  let page = 1;
+  const maxPerPage = 50;
+  
   try {
-    const response = await fetch(url, { headers: saavnHeaders });
-    if (!response.ok) return searchSaavn('Top Hits', limit);
+    while (allTracks.length < limit) {
+      const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&listid=${playlistId}&p=${page}&n=${maxPerPage}&_format=json&_marker=0&ctx=web6dot0`;
+      const response = await fetch(url, { headers: saavnHeaders });
+      if (!response.ok) break;
+      
+      const data = await response.json();
+      const tracksArray = data.songs || data.list;
+      
+      if (!tracksArray || !Array.isArray(tracksArray) || tracksArray.length === 0) break;
+      
+      allTracks = allTracks.concat(tracksArray.map(mapSaavnResult));
+      page++;
+      
+      if (tracksArray.length < maxPerPage) break;
+    }
     
-    const data = await response.json();
-    if (!data.list) return searchSaavn('Top Hits', limit);
-    
-    return data.list.map(mapSaavnResult);
+    if (allTracks.length === 0) return searchSaavn('Top Hits', limit);
+    return allTracks.slice(0, limit);
   } catch (e) {
     return searchSaavn('Top Hits', limit);
   }
@@ -263,6 +359,7 @@ async function fetchSpotifyPlaylistTracks(spotifyUrl, limit = 50, fallbackSaavnI
 
 module.exports = {
   searchSaavn,
+  searchSaavnWithFilters,
   getStreamUrl,
   getSaavnStreamByMetadata,
   getPlaylistTracks,

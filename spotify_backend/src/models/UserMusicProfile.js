@@ -30,6 +30,27 @@ const userMusicProfileSchema = new mongoose.Schema({
     default: {}
   },
 
+  // Example: { "happy": 0.8, "sad": 0.5, "chill": 0.9, "party": 0.2 }
+  moodAffinity: {
+    type: Map,
+    of: Number,
+    default: {}
+  },
+
+  // Example: { "low": 0.3, "medium": 0.6, "high": 0.8 }
+  energyAffinity: {
+    type: Map,
+    of: Number,
+    default: {}
+  },
+
+  // Example: { "1990s": 0.4, "2000s": 0.7, "2010s": 0.9, "2020s": 0.95 }
+  eraAffinity: {
+    type: Map,
+    of: Number,
+    default: {}
+  },
+
   // Number between 0.0 (Mostly Familiar) to 1.0 (Highly Adventurous/Discovery)
   discoveryPreference: { 
     type: Number, 

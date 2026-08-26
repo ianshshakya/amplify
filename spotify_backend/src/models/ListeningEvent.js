@@ -19,7 +19,7 @@ const listeningEventSchema = new mongoose.Schema({
   },
   eventType: { 
     type: String, 
-    enum: ['PLAY', 'PAUSE', 'SKIP', 'COMPLETE', 'LIKE', 'UNLIKE'], 
+    enum: ['PLAY', 'PAUSE', 'SKIP', 'EARLY_SKIP', 'COMPLETE', 'LIKE', 'UNLIKE', 'REPLAY', 'DISLIKE', 'SAVE', 'ADD_TO_PLAYLIST'], 
     required: true 
   },
   sessionId: { 

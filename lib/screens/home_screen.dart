@@ -13,6 +13,7 @@ import '../widgets/section_header.dart';
 import 'liked_songs_screen.dart';
 import 'playlist_screen.dart';
 import 'curated_playlist_screen.dart';
+import 'all_artists_screen.dart';
 import 'artist_screen.dart';
 import 'charts_screen.dart';
 import 'mood_screen.dart';
@@ -263,8 +264,15 @@ class HomeScreen extends ConsumerWidget {
             ),
 
             // ─── Artists You Might Like (Circular Discs) ──────────────────
-            const SliverToBoxAdapter(
-              child: SectionHeader(title: 'Top Artists'),
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: 'Top Artists',
+                onSeeAll: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AllArtistsScreen()),
+                  );
+                },
+              ),
             ),
             SliverToBoxAdapter(
               child: SizedBox(
@@ -274,11 +282,11 @@ class HomeScreen extends ConsumerWidget {
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: const [
-                    _ArtistDisc(name: 'Arijit Singh', imageUrl: 'https://i.ytimg.com/vi/nyuo9-OjNNg/hq720.jpg'),
-                    _ArtistDisc(name: 'Taylor Swift', imageUrl: 'https://i.ytimg.com/vi/K-a8s8Dg-68/hq720.jpg'),
-                    _ArtistDisc(name: 'The Weeknd', imageUrl: 'https://i.ytimg.com/vi/XXYlCGK8Q08/hq720.jpg'),
-                    _ArtistDisc(name: 'Shreya Ghoshal', imageUrl: 'https://i.ytimg.com/vi/5S5F-W02D5c/hq720.jpg'),
-                    _ArtistDisc(name: 'Justin Bieber', imageUrl: 'https://i.ytimg.com/vi/tQ0yjYUFKAE/hq720.jpg'),
+                    _ArtistDisc(name: 'Arijit Singh', imageUrl: 'https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg'),
+                    _ArtistDisc(name: 'Taylor Swift', imageUrl: 'https://c.saavncdn.com/artists/Taylor_Swift_003_20200226074119_500x500.jpg'),
+                    _ArtistDisc(name: 'The Weeknd', imageUrl: 'https://c.saavncdn.com/artists/The_Weeknd_002_20241003071400_500x500.jpg'),
+                    _ArtistDisc(name: 'Shreya Ghoshal', imageUrl: 'https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg'),
+                    _ArtistDisc(name: 'Justin Bieber', imageUrl: 'https://c.saavncdn.com/artists/Justin_Bieber_005_20201127112218_500x500.jpg'),
                   ],
                 ),
               ),

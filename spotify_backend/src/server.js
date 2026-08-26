@@ -11,6 +11,7 @@ const musicRoutes = require('./routes/musicRoutes');
 const homeRoutes = require('./routes/homeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
+const appRoutes = require('./routes/appRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -32,6 +33,7 @@ app.use('/api/music', musicRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/app', appRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

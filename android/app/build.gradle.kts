@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.spotify_clone"
+    namespace = "com.example.amplify"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.spotify_clone"
+        applicationId = "com.example.amplify"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

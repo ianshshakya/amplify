@@ -68,6 +68,14 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
     }
   }
 
+  /// Removes a downloaded track.
+  Future<void> removeDownload(String videoId) async {
+    await _offline.deleteSong(videoId);
+    final entries = Map<String, DownloadEntry>.from(state.entries);
+    entries.remove(videoId);
+    state = state.copyWith(entries: entries);
+  }
+
   void _setEntry(String videoId, DownloadStatus status, double progress) {
     state = state.copyWith(
       entries: {

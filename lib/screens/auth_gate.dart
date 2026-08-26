@@ -5,6 +5,7 @@ import '../providers/playlist_provider.dart';
 import 'login_screen.dart';
 import 'root_shell.dart';
 import 'splash_transition.dart';
+import '../services/api_client.dart';
 
 /// Entry point that watches auth state and routes to login or main shell.
 class AuthGate extends ConsumerStatefulWidget {
@@ -55,7 +56,49 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(playlistProvider.notifier).loadUserData();
+      _checkForUpdate();
     });
+  }
+
+  Future<void> _checkForUpdate() async {
+    try {
+      final res = await ApiClient().get('/app/config');
+      final latestVersion = res['latestVersion'] as String?;
+      final downloadUrl = res['downloadUrl'] as String?;
+      
+      const currentVersion = '1.0.0'; 
+      if (latestVersion != null && latestVersion != currentVersion && downloadUrl != null) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Update Available', style: TextStyle(color: Colors.white)),
+            content: Text('A new version ($latestVersion) of Amplify is available! You can download it from our website.', style: const TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Visit: $downloadUrl to download'),
+                      duration: const Duration(seconds: 10),
+                    ),
+                  );
+                },
+                child: const Text('Update', style: TextStyle(color: Colors.greenAccent)),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Update check failed: $e');
+    }
   }
 
   @override

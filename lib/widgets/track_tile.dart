@@ -187,11 +187,11 @@ class _ContextMenu extends ConsumerWidget {
                 title: Text('Add to playlist'),
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: _TrackAction.download,
               child: ListTile(
-                leading: Icon(Icons.download_outlined),
-                title: Text('Download'),
+                leading: Icon(ref.watch(downloadProvider).isDownloaded(track.videoId) ? Icons.download_done : Icons.download_outlined),
+                title: Text(ref.watch(downloadProvider).isDownloaded(track.videoId) ? 'Remove download' : 'Download'),
               ),
             ),
           ],
@@ -212,7 +212,14 @@ class _ContextMenu extends ConsumerWidget {
       case _TrackAction.addToPlaylist:
         _showAddToPlaylistDialog(context, ref);
       case _TrackAction.download:
-        ref.read(downloadProvider.notifier).download(track);
+        if (ref.read(downloadProvider).isDownloaded(track.videoId)) {
+          ref.read(downloadProvider.notifier).removeDownload(track.videoId);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Removed "${track.title}" from downloads')),
+          );
+        } else {
+          ref.read(downloadProvider.notifier).download(track);
+        }
     }
   }
 

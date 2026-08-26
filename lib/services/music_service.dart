@@ -56,18 +56,11 @@ class MusicService {
 
   Future<CuratedPlaylistData?> getCuratedPlaylist(String id) async {
     try {
-      final results = await getHomeFeed();
-      final p = results.firstWhere((p) => p.id == id);
-      
-      final songs = await search(p.query);
-      return CuratedPlaylistData(
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        thumbnailUrl: songs.isNotEmpty ? songs.first.thumbnailUrl : '',
-        songs: songs,
-      );
+      final result = await _api.get('/home/playlist/$id');
+      if (result == null) return null;
+      return CuratedPlaylistData.fromJson(result as Map<String, dynamic>);
     } catch (e) {
+      debugPrint('Error getting curated playlist: $e');
       return null;
     }
   }
@@ -76,7 +69,16 @@ class MusicService {
 
   /// Fetch trending charts tracks locally.
   Future<List<Track>> getCharts() async {
-    return search('Top global hits 2024');
+    try {
+      final results = await _api.get('/home/charts');
+      if (results is! List) return [];
+      return results
+          .map((v) => _trackFromJson(v as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting charts: $e');
+      return [];
+    }
   }
 
   /// Fetch mood/genre categories for the mood browsing grid.
@@ -92,20 +94,9 @@ class MusicService {
     }
   }
 
-  /// Fetch tracks for a specific mood playlist locally.
+  /// Fetch tracks for a specific mood playlist.
   Future<CuratedPlaylistData?> getMoodPlaylist(String playlistId) async {
-    try {
-      final songs = await search('$playlistId music');
-      return CuratedPlaylistData(
-        id: playlistId,
-        title: playlistId,
-        description: 'Mood playlist',
-        thumbnailUrl: songs.isNotEmpty ? songs.first.thumbnailUrl : '',
-        songs: songs,
-      );
-    } catch (e) {
-      return null;
-    }
+    return getCuratedPlaylist(playlistId);
   }
 
   // ─── Artist ────────────────────────────────────────────────────────────────
@@ -275,6 +266,55 @@ class MusicService {
       return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
     } catch (e) {
       debugPrint('Artist Radio error: $e');
+      return [];
+    }
+  }
+
+  /// Get the next batch of autoplay tracks using session context for smarter radio.
+  Future<List<Track>> getNextTracks(Track currentSong, dynamic sessionCtx) async {
+    try {
+      final sessionHistory = sessionCtx?.recentSongIds ?? <String>[];
+      final sessionArtists = sessionCtx?.recentArtists ?? <String>[];
+
+      final results = await _api.post('/recommendations/next', body: {
+        'currentSong': {
+          'videoId': currentSong.videoId,
+          'title': currentSong.title,
+          'artist': currentSong.artist,
+          'thumbnailUrl': currentSong.thumbnailUrl,
+          'durationMs': currentSong.duration.inMilliseconds,
+          'source': currentSong.source,
+        },
+        'sessionHistory': sessionHistory,
+        'sessionArtists': sessionArtists,
+      });
+
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      // Fallback to basic song radio
+      debugPrint('getNextTracks error: $e — falling back to song radio');
+      return getSongRadio(currentSong.videoId);
+    }
+  }
+
+  /// Get tracks similar to a given song.
+  Future<List<Track>> getSimilarTracks(Track song) async {
+    try {
+      final results = await _api.post('/recommendations/similar', body: {
+        'song': {
+          'videoId': song.videoId,
+          'title': song.title,
+          'artist': song.artist,
+          'thumbnailUrl': song.thumbnailUrl,
+          'durationMs': song.duration.inMilliseconds,
+          'source': song.source,
+        },
+      });
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('getSimilarTracks error: $e');
       return [];
     }
   }

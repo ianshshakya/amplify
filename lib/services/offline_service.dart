@@ -69,6 +69,19 @@ class OfflineService {
     }
   }
 
+  /// Deletes a downloaded song from local storage.
+  Future<void> deleteSong(String videoId) async {
+    try {
+      final audioFile = File(await _getLocalPath(videoId));
+      final metaFile = File(await _getMetadataPath(videoId));
+      if (await audioFile.exists()) await audioFile.delete();
+      if (await metaFile.exists()) await metaFile.delete();
+      debugPrint('Deleted downloaded song $videoId');
+    } catch (e) {
+      debugPrint('Error deleting downloaded song $videoId: $e');
+    }
+  }
+
   /// Returns a list of all downloaded tracks.
   Future<List<Track>> getDownloadedTracks() async {
     try {
