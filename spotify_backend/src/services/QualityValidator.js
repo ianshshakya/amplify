@@ -175,7 +175,7 @@ class FallbackLadder {
         } else {
           console.log(`[FallbackLadder] Level ${attempt.level}: ${attempt.description}`);
           const relaxedIntent = attempt.modifier(intent);
-          const { CandidateGenerator } = require('./CandidateGenerator');
+          const CandidateGenerator = require('./CandidateGenerator');
           const candidates = await CandidateGenerator.generatePool(relaxedIntent, null, userProfile);
           const scored = ScoringEngine.score(candidates, relaxedIntent, userProfile);
           result = DiversityController.select(scored, relaxedIntent, targetCount);
