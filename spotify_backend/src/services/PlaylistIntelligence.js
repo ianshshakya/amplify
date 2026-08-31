@@ -90,12 +90,12 @@ class PlaylistIntelligence {
     if (!forceRefresh) {
       const cached = getCached(cacheKey);
       if (cached) {
-        console.log(`[PlaylistIntelligence] Cache hit for: ${intentKey}`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] Cache hit for: ${intentKey}`);
         return cached;
       }
     }
 
-    console.log(`[PlaylistIntelligence] Generating: ${intentKey} (target: ${targetCount})`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] Generating: ${intentKey} (target: ${targetCount})`);
 
     // ── Load user profile ─────────────────────────────────────────────────────
     let userProfile = null;
@@ -112,21 +112,21 @@ class PlaylistIntelligence {
 
     // ── Hard filter: remove tracks that violate hard constraints ──────────────
     candidates = this._hardFilter(candidates, intent);
-    console.log(`[PlaylistIntelligence] After hard filter: ${candidates.length} candidates`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] After hard filter: ${candidates.length} candidates`);
 
     // ── Score candidates ──────────────────────────────────────────────────────
     const scored = ScoringEngine.score(candidates, intent, userProfile);
 
     // ── Apply diversity rules ─────────────────────────────────────────────────
     const diverse = DiversityController.select(scored, intent, targetCount);
-    console.log(`[PlaylistIntelligence] After diversity: ${diverse.length} tracks`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] After diversity: ${diverse.length} tracks`);
 
     // ── Sequence the playlist ─────────────────────────────────────────────────
     const sequenced = SequenceBuilder.sequence(diverse, intent);
 
     // ── Validate result ───────────────────────────────────────────────────────
     const validation = QualityValidator.validate(sequenced, intent);
-    console.log(`[PlaylistIntelligence] Validation: pass=${validation.pass}, score=${validation.score}`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] Validation: pass=${validation.pass}, score=${validation.score}`);
     if (validation.warnings.length > 0) {
       console.warn('[PlaylistIntelligence] Warnings:', validation.warnings.join('; '));
     }
@@ -137,12 +137,12 @@ class PlaylistIntelligence {
 
     // ── Fallback if validation failed ─────────────────────────────────────────
     if (!validation.pass) {
-      console.log(`[PlaylistIntelligence] Validation failed: ${validation.issues.join('; ')}. Running fallback...`);
+      if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] Validation failed: ${validation.issues.join('; ')}. Running fallback...`);
       const fallback = await FallbackLadder.run(intent, targetCount, userProfile);
       finalTracks = fallback.tracks;
       fallbackLevel = fallback.fallbackLevel;
       fallbackReason = fallback.fallbackReason;
-      console.log(`[PlaylistIntelligence] Fallback level ${fallbackLevel}: ${fallbackReason}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`[PlaylistIntelligence] Fallback level ${fallbackLevel}: ${fallbackReason}`);
     }
 
     const result = {

@@ -131,7 +131,7 @@ async function searchSaavnWithFilters(query, limit = 20, options = {}) {
 
   // If hard-filtering removed too many results, loosen the year constraint and try again
   if (filtered.length < Math.min(limit, 5) && (minYear !== null || maxYear !== null)) {
-    console.log(`[Saavn] Year filter too strict for "${query}", using unfiltered pool.`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[Saavn] Year filter too strict for "${query}", using unfiltered pool.`);
     filtered = language
       ? rawResults.filter(r => r.language && r.language.toLowerCase() === (language || '').toLowerCase())
       : rawResults;
@@ -157,7 +157,7 @@ function decryptUrl(encryptedUrl) {
   }
 }
 
-async function getStreamUrl(songId) {
+async function getSongDetails(songId) {
   const url = `https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${songId}&_format=json&_marker=0&ctx=web6dot0`;
   const response = await fetch(url, { headers: saavnHeaders });
   if (!response.ok) throw new Error('Failed to fetch song details');
@@ -174,6 +174,12 @@ async function getStreamUrl(songId) {
   if (!songData) {
     throw new Error('Song not found in JioSaavn response');
   }
+  
+  return songData;
+}
+
+async function getStreamUrl(songId) {
+  const songData = await getSongDetails(songId);
   
   if (songData.encrypted_media_url) {
     const decryptedUrl = decryptUrl(songData.encrypted_media_url);
@@ -197,7 +203,7 @@ async function getSaavnStreamByMetadata(title, artist) {
   cleanTitle = cleanTitle.replace(/^[\s-]+|[\s-]+$/g, '');
   const query = `${cleanTitle} ${artist}`.trim();
   
-  console.log(`[JioSaavn Hybrid] Searching for audio: "${query}"`);
+  if (process.env.NODE_ENV !== 'production') console.log(`[JioSaavn Hybrid] Searching for audio: "${query}"`);
   
   const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=1&p=1&_format=json&_marker=0&ctx=web6dot0`;
   const response = await fetch(url, { headers: saavnHeaders });
@@ -214,7 +220,7 @@ async function getSaavnStreamByMetadata(title, artist) {
   if (bestMatch.encrypted_media_url) {
     const decryptedUrl = decryptUrl(bestMatch.encrypted_media_url);
     if (decryptedUrl) {
-      console.log(`[JioSaavn Hybrid] Found audio stream for: ${bestMatch.song}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`[JioSaavn Hybrid] Found audio stream for: ${bestMatch.song}`);
       return decryptedUrl;
     }
   }
@@ -293,20 +299,50 @@ async function getRelatedTracks(songId, limit = 20) {
 
 async function getLyrics(songId) {
   try {
+    // 1. Try JioSaavn first
     const url = `https://www.jiosaavn.com/api.php?__call=lyrics.getLyrics&lyrics_id=${songId}&ctx=web6dot0&api_version=4&_format=json&_marker=0`;
     const response = await fetch(url, { headers: saavnHeaders });
-    if (!response.ok) throw new Error('Failed to fetch lyrics');
     
-    const data = await response.json();
-    if (data.lyrics) {
-      return {
-        id: songId,
-        text: data.lyrics.replace(/<br>/g, '\n')
-      };
+    if (response.ok) {
+      const data = await response.json();
+      if (data.lyrics) {
+        return {
+          id: songId,
+          text: data.lyrics.replace(/<br>/g, '\n')
+        };
+      }
     }
+
+    // 2. Fallback to LRCLib.net
+    if (process.env.NODE_ENV !== 'production') console.log(`[Lyrics] JioSaavn empty for ${songId}, trying LRCLib...`);
+    const songData = await getSongDetails(songId);
+    
+    // Use the same extraction logic used by mapSaavnResult
+    const titleRaw = songData.song || songData.title || '';
+    const artistRaw = songData.primary_artists || songData.subtitle || '';
+    
+    // Basic cleanup
+    const cleanTitle = decodeHTMLEntities(titleRaw).replace(/\(Official.*?\)|\[.*?\]/gi, '').trim();
+    const cleanArtist = decodeHTMLEntities(artistRaw).split(',')[0].trim();
+    
+    if (cleanTitle) {
+      const lrcUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
+      const lrcRes = await fetch(lrcUrl);
+      if (lrcRes.ok) {
+        const lrcData = await lrcRes.json();
+        if (lrcData && lrcData.plainLyrics) {
+          if (process.env.NODE_ENV !== 'production') console.log(`[Lyrics] Found LRCLib fallback for ${cleanTitle}`);
+          return {
+            id: songId,
+            text: lrcData.plainLyrics
+          };
+        }
+      }
+    }
+
     return null;
   } catch (error) {
-    console.error('getLyrics error:', error.message);
+    if (process.env.NODE_ENV !== 'production') console.error('getLyrics error:', error.message);
     return null;
   }
 }

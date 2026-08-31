@@ -19,6 +19,7 @@ const {
 } = require('../utils/saavn');
 
 const { normalizeTracks, deduplicateTracks } = require('./AmplifyNormalizer');
+const { metadataCache } = require('../utils/cache');
 
 class MusicProvider {
   /**
@@ -29,6 +30,10 @@ class MusicProvider {
    * @returns {Promise<AmplifyTrack[]>}
    */
   static async search(query, limit = 20, options = {}) {
+    const cacheKey = `search_${query}_${limit}_${JSON.stringify(options)}`;
+    const cached = metadataCache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       let raw;
       if (options.language || options.minYear || options.maxYear) {
@@ -36,9 +41,11 @@ class MusicProvider {
       } else {
         raw = await searchSaavn(query, limit);
       }
-      return normalizeTracks(raw);
+      const normalized = normalizeTracks(raw);
+      if (normalized.length > 0) metadataCache.set(cacheKey, normalized);
+      return normalized;
     } catch (err) {
-      console.error(`[MusicProvider] search("${query}") failed:`, err.message);
+      if (process.env.NODE_ENV !== 'production') console.error(`[MusicProvider] search("${query}") failed:`, err.message);
       return [];
     }
   }
@@ -122,6 +129,10 @@ class MusicProvider {
    * @returns {Promise<AmplifyTrack[]>}
    */
   static async getMainstreamFallback(language = 'English', limit = 30) {
+    const cacheKey = `fallback_${language}_${limit}`;
+    const cached = metadataCache.get(cacheKey);
+    if (cached) return cached;
+
     const queries = {
       Hindi: ['Arijit Singh top hits', 'Bollywood hits 2023 2024', 'Hindi top songs'],
       English: ['Top English hits 2024', 'Popular English songs', 'Billboard top songs'],
@@ -130,7 +141,10 @@ class MusicProvider {
       Telugu: ['Telugu hits 2024', 'Tollywood top songs'],
     };
     const searchQueries = queries[language] || queries['English'];
-    return this.multiSearch(searchQueries, Math.ceil(limit / searchQueries.length));
+    const results = await this.multiSearch(searchQueries, Math.ceil(limit / searchQueries.length));
+    
+    if (results.length > 0) metadataCache.set(cacheKey, results);
+    return results;
   }
 }
 

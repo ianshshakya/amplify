@@ -43,7 +43,7 @@ class CandidateGenerator {
       const dbTracks = await this._getFromDatabase(intent, playlistConfig);
       if (dbTracks.length > 0) {
         allCandidates.push(...dbTracks);
-        console.log(`[CandidateGen] DB source: ${dbTracks.length} tracks`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[CandidateGen] DB source: ${dbTracks.length} tracks`);
       }
     } catch (e) {
       console.warn('[CandidateGen] DB source failed:', e.message);
@@ -54,7 +54,7 @@ class CandidateGenerator {
       try {
         const searchTracks = await this._searchByIntent(intent, playlistConfig);
         allCandidates.push(...searchTracks);
-        console.log(`[CandidateGen] Search source: ${searchTracks.length} tracks`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[CandidateGen] Search source: ${searchTracks.length} tracks`);
       } catch (e) {
         console.warn('[CandidateGen] Search source failed:', e.message);
       }
@@ -65,7 +65,7 @@ class CandidateGenerator {
       try {
         const personalTracks = await this._getPersonalizedCandidates(userProfile, intent);
         allCandidates.push(...personalTracks);
-        console.log(`[CandidateGen] Personal source: ${personalTracks.length} tracks`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[CandidateGen] Personal source: ${personalTracks.length} tracks`);
       } catch (e) {
         console.warn('[CandidateGen] Personal source failed:', e.message);
       }
@@ -73,7 +73,7 @@ class CandidateGenerator {
 
     // ── Source 4: Mainstream fallback (ensure enough songs) ──────────────────
     if (allCandidates.length < 20) {
-      console.log(`[CandidateGen] Low candidate count (${allCandidates.length}), using mainstream fallback`);
+      if (process.env.NODE_ENV !== 'production') console.log(`[CandidateGen] Low candidate count (${allCandidates.length}), using mainstream fallback`);
       try {
         const lang = intent.languages.length > 0 ? intent.languages[0] : 'Hindi';
         const fallback = await MusicProvider.getMainstreamFallback(lang, 40);
@@ -85,7 +85,7 @@ class CandidateGenerator {
 
     // ── Deduplicate and return ────────────────────────────────────────────────
     const deduplicated = deduplicateTracks(allCandidates);
-    console.log(`[CandidateGen] Final pool: ${deduplicated.length} unique candidates`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[CandidateGen] Final pool: ${deduplicated.length} unique candidates`);
     return deduplicated;
   }
 

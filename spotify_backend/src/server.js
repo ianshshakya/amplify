@@ -26,13 +26,20 @@ const authLimiter = rateLimit({
   message: { message: 'Too many attempts, please try again later.' },
 });
 
+// Protect heavy generation routes from abuse
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 40, // max 40 requests per minute
+  message: { message: 'Rate limit exceeded, please slow down.' },
+});
+
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/playlists', playlistRoutes);
+app.use('/api/playlists', apiLimiter, playlistRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/recommendations', apiLimiter, recommendationRoutes);
 app.use('/api/app', appRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

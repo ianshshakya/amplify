@@ -1,6 +1,55 @@
 const ListeningEvent = require('../models/ListeningEvent');
 const SongStatistic = require('../models/SongStatistic');
 
+// In-memory queues for batch processing
+const EVENT_QUEUE = [];
+const STATS_QUEUE = [];
+
+// Flush queues to MongoDB every 10 seconds
+setInterval(async () => {
+  if (EVENT_QUEUE.length > 0) {
+    const batch = EVENT_QUEUE.splice(0, EVENT_QUEUE.length);
+    try {
+      await ListeningEvent.insertMany(batch);
+    } catch (e) {
+      console.error('[AnalyticsService] Batch insert ListeningEvent error:', e.message);
+    }
+  }
+
+  if (STATS_QUEUE.length > 0) {
+    const statsBatch = STATS_QUEUE.splice(0, STATS_QUEUE.length);
+    
+    // Consolidate updates for the same song before bulking to save ops
+    const consolidated = {};
+    for (const item of statsBatch) {
+      if (!consolidated[item.songId]) consolidated[item.songId] = { ...item.update };
+      else {
+        const existing = consolidated[item.songId];
+        if (item.update.$inc) {
+          existing.$inc = existing.$inc || {};
+          for (const key in item.update.$inc) {
+            existing.$inc[key] = (existing.$inc[key] || 0) + item.update.$inc[key];
+          }
+        }
+        existing.$set = { ...existing.$set, ...item.update.$set };
+      }
+    }
+
+    try {
+      const bulkOps = Object.keys(consolidated).map(songId => ({
+        updateOne: {
+          filter: { songId },
+          update: consolidated[songId],
+          upsert: true
+        }
+      }));
+      if (bulkOps.length > 0) await SongStatistic.bulkWrite(bulkOps);
+    } catch (e) {
+      console.error('[AnalyticsService] Batch update SongStatistic error:', e.message);
+    }
+  }
+}, 10000);
+
 /**
  * Service to handle processing of listening events and aggregating
  * them into the scalable SongStatistics model.
@@ -19,8 +68,8 @@ class AnalyticsService {
         throw new Error('Invalid event data: song and eventType are required.');
       }
 
-      // 1. Record the raw event for taste profiling (expires after 90 days)
-      await ListeningEvent.create({
+      // 1. Queue the raw event for batch insertion
+      EVENT_QUEUE.push({
         userId,
         songId: song.videoId,
         song,
@@ -28,15 +77,16 @@ class AnalyticsService {
         durationPlayedMs: durationPlayedMs || 0,
         completionPercent: completionPercent || 0,
         context,
-        sessionId
+        sessionId,
+        createdAt: new Date()
       });
 
-      // 2. Incrementally update the aggregate SongStatistics
-      await this._updateSongStatistics(song, eventType);
+      // 2. Queue the aggregate SongStatistics update
+      this._updateSongStatistics(song, eventType);
 
       return true;
     } catch (error) {
-      console.error('AnalyticsService error:', error.message);
+      if (process.env.NODE_ENV !== 'production') console.error('AnalyticsService error:', error.message);
       // We don't want analytics failures to break the client API
       return false; 
     }
@@ -81,11 +131,7 @@ class AnalyticsService {
         return; // Ignore PAUSE or custom events for aggregates
     }
 
-    await SongStatistic.findOneAndUpdate(
-      { songId },
-      update,
-      { upsert: true, new: true }
-    );
+    STATS_QUEUE.push({ songId, update });
   }
 }
 

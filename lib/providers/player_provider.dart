@@ -69,7 +69,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Ref? _ref; // Injected so we can access sessionContextProvider
 
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
-  bool _isPrefetching = false;
+  bool _isFetchingRadio = false;
 
   PlayerNotifier({Ref? ref}) : super(const PlayerState()) {
     _ref = ref;
@@ -119,10 +119,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         state = state.copyWith(status: PlaybackStatus.playing);
       }
 
-      // Adaptive Prefetching: If we are on the last track in the queue, and past 70% completion, fetch next tracks early.
-      // This prevents any loading spinner when the song ends.
+      // Adaptive Radio Fetching: If we are nearing the end of the entire queue, fetch radio tracks.
       final duration = _audioPlayer.duration?.inMilliseconds ?? 0;
-      if (duration > 0 && state.currentIndex == state.queue.length - 1 && !_isPrefetching) {
+      if (duration > 0 && state.currentIndex >= state.queue.length - 2 && !_isFetchingRadio) {
         final percent = (pos.inMilliseconds / duration) * 100;
         if (percent > 70) {
           _appendRadioTracksIfNeeded();
@@ -137,7 +136,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           currentIndex: index,
           currentTrack: newTrack,
         );
-        _prefetchNext();
         // Update session context so radio knows what we've been listening to
         _ref?.read(sessionContextProvider.notifier).addTrack(newTrack);
       }
@@ -166,12 +164,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       await _audioPlayer.stop();
 
-      final source = await _buildAudioSource(track);
-      _playlistSource = ConcatenatingAudioSource(children: [source]);
+      // Instantly load the entire queue so skipping is perfectly seamless
+      final sources = await Future.wait(queue.map((t) => _buildAudioSource(t)));
+      _playlistSource = ConcatenatingAudioSource(children: sources);
       
       await _audioPlayer.setAudioSource(
         _playlistSource!, 
-        initialIndex: 0, 
+        initialIndex: idx, 
         initialPosition: Duration.zero
       );
       
@@ -181,9 +180,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
       // Dispatch PLAY event to the self-learning engine
       _musicService.logListeningEvent(track, 'PLAY').catchError((_) {});
-
-      // Prefetch the next track right away
-      _prefetchNext();
 
     } on StreamUnavailableException catch (e) {
       debugPrint('[Player] Stream unavailable: $e');
@@ -216,57 +212,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  Future<void> _prefetchNext() async {
-    if (_isPrefetching || state.queue.isEmpty) return;
-    
-    final currentIndex = state.currentIndex;
-    // Calculate what the next index will be
-    int nextIndex;
-    if (state.shuffleEnabled) {
-      nextIndex = state.queue.length > 1
-          ? (currentIndex + 1 + DateTime.now().millisecond % (state.queue.length - 1)) % state.queue.length
-          : 0;
-    } else if (currentIndex < state.queue.length - 1) {
-      nextIndex = currentIndex + 1;
-    } else if (state.repeatMode == RepeatMode.all) {
-      nextIndex = 0;
-    } else {
-      return; // No next track
-    }
-
-    // Only prefetch if we haven't already appended it to the playlistSource
-    // just_audio's playlist source length will tell us if we already appended
-    if (_playlistSource != null && _playlistSource!.length > _audioPlayer.currentIndex! + 1) {
-      return; // Already prefetched
-    }
-
-    _isPrefetching = true;
-    try {
-      final nextTrack = state.queue[nextIndex];
-      final source = await _buildAudioSource(nextTrack);
-      await _playlistSource?.add(source);
-      
-      // Update the queue so that the physical queue order matches the playlistSource order
-      if (nextIndex != currentIndex + 1) {
-        // If shuffled or repeated, we need to ensure state.queue reflects this physically 
-        // for the currentIndexStream listener to map correctly.
-        // But for simplicity, gapless shuffle is complex. We'll just append it to state.queue if needed.
-        // Actually, just append to state.queue so currentIndex matches length.
-        final updatedQueue = [...state.queue];
-        if (nextIndex == 0 && state.repeatMode == RepeatMode.all) {
-           updatedQueue.add(nextTrack);
-           state = state.copyWith(queue: updatedQueue);
-        } else if (state.shuffleEnabled) {
-           updatedQueue.insert(currentIndex + 1, nextTrack);
-           state = state.copyWith(queue: updatedQueue);
-        }
-      }
-    } catch (e) {
-      debugPrint('[Player] Prefetch failed: $e');
-    } finally {
-      _isPrefetching = false;
-    }
-  }
+  // Native prefetching is handled instantly since we construct the queue upfront.
 
   Future<void> togglePlayPause() async {
     if (_audioPlayer.playing) {
@@ -313,7 +259,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   void toggleShuffle() {
-    state = state.copyWith(shuffleEnabled: !state.shuffleEnabled);
+    final nextMode = !state.shuffleEnabled;
+    state = state.copyWith(shuffleEnabled: nextMode);
+    _audioPlayer.setShuffleModeEnabled(nextMode);
+    if (nextMode) {
+      _audioPlayer.shuffle();
+    }
   }
 
   void cycleRepeatMode() {
@@ -326,26 +277,33 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _audioPlayer.setLoopMode(next == RepeatMode.one ? LoopMode.one : LoopMode.off);
   }
 
-  void addToQueue(Track track) {
+  Future<void> addToQueue(Track track) async {
     if (!state.queue.any((t) => t.videoId == track.videoId)) {
+      final source = await _buildAudioSource(track);
+      await _playlistSource?.add(source);
       state = state.copyWith(queue: [...state.queue, track]);
     }
   }
 
-  void removeFromQueue(int index) {
+  Future<void> removeFromQueue(int index) async {
     if (index < 0 || index >= state.queue.length) return;
+    await _playlistSource?.removeAt(index);
     final newQueue = [...state.queue]..removeAt(index);
     int newIdx = state.currentIndex;
     if (index < state.currentIndex) newIdx--;
     state = state.copyWith(queue: newQueue, currentIndex: newIdx.clamp(0, newQueue.length - 1));
   }
 
-  void reorderQueue(int oldIndex, int newIndex) {
-    // Reordering with ConcatenatingAudioSource is more complex, but we update the UI queue here.
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || newIndex < 0 || oldIndex >= state.queue.length) return;
+    final insertAt = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    
+    await _playlistSource?.move(oldIndex, insertAt);
+
     final q = [...state.queue];
     final item = q.removeAt(oldIndex);
-    final insertAt = newIndex > oldIndex ? newIndex - 1 : newIndex;
     q.insert(insertAt, item);
+    
     int newCurrent = state.currentIndex;
     if (oldIndex == state.currentIndex) {
       newCurrent = insertAt;
@@ -361,11 +319,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   /// Silently append algorithmic infinite radio tracks when the queue runs out.
   Future<void> _appendRadioTracksIfNeeded() async {
-    if (_isPrefetching) return;
+    if (_isFetchingRadio) return;
     final current = state.currentTrack;
     if (current == null) return;
 
-    _isPrefetching = true;
+    _isFetchingRadio = true;
     try {
       // Use session context for smarter radio (knows what's been playing)
       final sessionCtx = _ref?.read(sessionContextProvider);
@@ -377,17 +335,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         final newTracks = radio.where((t) => !existingIds.contains(t.videoId)).toList();
 
         if (newTracks.isNotEmpty) {
+          final sources = await Future.wait(newTracks.map((t) => _buildAudioSource(t)));
+          await _playlistSource?.addAll(sources);
+          
           final newQueue = [...state.queue, ...newTracks];
           state = state.copyWith(queue: newQueue);
-
-          final nextTrack = newTracks.first;
-          final source = await _buildAudioSource(nextTrack);
-          await _playlistSource?.add(source);
         }
       }
     } catch (_) {
     } finally {
-      _isPrefetching = false;
+      _isFetchingRadio = false;
     }
   }
 
