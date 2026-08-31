@@ -11,6 +11,8 @@ import '../widgets/skeleton_loader.dart';
 import 'artist_screen.dart';
 import 'album_screen.dart';
 import 'mood_screen.dart';
+import '../providers/voice_provider.dart';
+import '../models/voice_command.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -98,7 +100,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
           // ─── Main Body ────────────────────────────────────────────────────
           Expanded(
-            child: _buildBody(searchState, moodsAsync),
+            child: Stack(
+              children: [
+                _buildBody(searchState, moodsAsync),
+                
+                // Floating Voice Control Pill
+                Positioned(
+                  bottom: 24,
+                  left: 24,
+                  right: 24,
+                  child: _FloatingVoiceBar(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -256,6 +270,143 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       error: (_, __) => const Center(
         child: Text('Failed to load genres', style: TextStyle(color: AppColors.textSecondary)),
+      ),
+    );
+  }
+}
+
+/// A modern, floating voice control pill designed for the search screen.
+class _FloatingVoiceBar extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_FloatingVoiceBar> createState() => _FloatingVoiceBarState();
+}
+
+class _FloatingVoiceBarState extends ConsumerState<_FloatingVoiceBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final voiceState = ref.watch(voiceProvider);
+    final notifier = ref.read(voiceProvider.notifier);
+    final isListening = voiceState.feedback == VoiceFeedback.listening;
+    final isProcessing = voiceState.feedback == VoiceFeedback.processing;
+
+    // Auto-reset after success/error
+    if (voiceState.feedback == VoiceFeedback.success ||
+        voiceState.feedback == VoiceFeedback.error) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) notifier.reset();
+      });
+    }
+
+    // Hide if idle to keep it minimal, or just show a small mic button?
+    // The user wants it optimal. Let's make it a prominent Floating Search Pill.
+    return GestureDetector(
+      onTap: () => notifier.toggleListening(),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+        decoration: BoxDecoration(
+          color: isListening 
+              ? const Color(0xFF1DB954) 
+              : const Color(0xFF282828),
+          borderRadius: BorderRadius.circular(30), // Pill shape
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isListening)
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (_, __) => Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: const Icon(Icons.mic, color: Colors.white, size: 24),
+                ),
+              )
+            else if (isProcessing)
+              const SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white,
+                ),
+              )
+            else if (voiceState.feedback == VoiceFeedback.success)
+              const Icon(Icons.check_circle_outline, color: Colors.white, size: 24)
+            else if (voiceState.feedback == VoiceFeedback.error)
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 24)
+            else
+              const Icon(Icons.mic_none, color: Colors.white, size: 24),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isListening
+                        ? 'Tap to stop listening'
+                        : isProcessing
+                            ? 'Processing…'
+                            : voiceState.feedback == VoiceFeedback.success
+                                ? voiceState.feedbackMessage
+                                : voiceState.feedback == VoiceFeedback.error
+                                    ? voiceState.feedbackMessage
+                                    : 'Tap to voice search',
+                    style: TextStyle(
+                      color: voiceState.feedback == VoiceFeedback.error
+                          ? Colors.redAccent
+                          : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (voiceState.recognizedText.isNotEmpty && isListening)
+                    Text(
+                      '"${voiceState.recognizedText}"',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

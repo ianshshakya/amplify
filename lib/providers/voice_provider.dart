@@ -100,6 +100,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     // onDone callback above will handle the result
   }
 
+  Future<void> toggleListening() async {
+    if (state.feedback == VoiceFeedback.listening) {
+      await stopListening();
+    } else {
+      await startListening();
+    }
+  }
+
   void reset() {
     state = const VoiceState();
   }
@@ -120,15 +128,19 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     final sessionCtx = _ref.read(sessionContextProvider);
     final currentTrack = playerState.currentTrack;
 
-    final command = await _parser.parse(
-      text,
-      currentSongTitle: currentTrack?.title,
-      currentArtist: currentTrack?.artist,
-      sessionHistory: sessionCtx.recentSongIds,
-      sessionArtists: sessionCtx.recentArtists,
-    );
+    try {
+      final command = await _parser.parse(
+        text,
+        currentSongTitle: currentTrack?.title,
+        currentArtist: currentTrack?.artist,
+        sessionHistory: sessionCtx.recentSongIds,
+        sessionArtists: sessionCtx.recentArtists,
+      ).timeout(const Duration(seconds: 8));
 
-    await _executeCommand(command);
+      await _executeCommand(command);
+    } catch (e) {
+      _setError("Couldn't process that. Try again.");
+    }
   }
 
   Future<void> _executeCommand(VoiceCommand command) async {

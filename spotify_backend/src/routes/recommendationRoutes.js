@@ -189,7 +189,51 @@ router.post('/voice-intent', async (req, res) => {
 
     const normalized = text.trim().toLowerCase();
 
-    // ── Map common voice phrases to structured commands ──────────────────────
+    // ── AI NLP with Groq (if key is present) ─────────────────────────────────
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${groqKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'system',
+                content: `You are an AI for a music app. Analyze the user's voice command.
+Return ONLY a valid JSON object matching this schema:
+{
+  "intent": "play|pause|next|searchAndPlay|recommendation|unknown",
+  "query": "string (for searchAndPlay)",
+  "mood": "string (for recommendation e.g. chill, energetic)",
+  "energy": "low|medium|high",
+  "explanation": "short string explaining action"
+}
+Current song playing: ${currentSong || 'None'}.
+Do not output markdown, do not output anything other than JSON.`
+              },
+              { role: 'user', content: text }
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.1
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices[0].message.content;
+          return res.json(JSON.parse(content));
+        }
+      } catch (err) {
+        console.error('Groq API error, falling back to local parsing:', err.message);
+      }
+    }
+
+    // ── Map common voice phrases to structured commands (Fallback) ───────────
 
     // Simple playback (these are handled deterministically on the client,
     // but we keep them here as a fallback)
