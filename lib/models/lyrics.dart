@@ -16,9 +16,12 @@ class Lyrics {
     final synced = rawLines
         ?.map((l) => LyricLine.fromJson(l as Map<String, dynamic>))
         .toList();
+    final rawText = (json['plainText'] ?? json['text']) as String?;
+    final cleanedText = rawText?.split('\n').map((e) => e.trim()).join('\n');
+
     return Lyrics(
       syncedLines: synced,
-      plainText: json['plainText'] as String?,
+      plainText: cleanedText,
     );
   }
 }
@@ -32,6 +35,6 @@ class LyricLine {
 
   factory LyricLine.fromJson(Map<String, dynamic> json) => LyricLine(
         startTimeMs: (json['startTimeMs'] as num?)?.toInt() ?? 0,
-        text: json['text'] as String? ?? '',
+        text: (json['text'] as String? ?? '').trim(),
       );
 }

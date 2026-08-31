@@ -103,6 +103,19 @@ async function searchSaavn(query, limit = 20) {
   return sortedResults.map(mapSaavnResult);
 }
 
+async function searchSaavnPage(query, page = 1) {
+  const maxPerPage = 40;
+  const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&n=${maxPerPage}&p=${page}&_format=json&_marker=0&ctx=web6dot0`;
+  const response = await fetch(url, { headers: saavnHeaders });
+  
+  if (!response.ok) return [];
+  
+  const data = await response.json();
+  if (!data.results || data.results.length === 0) return [];
+  
+  return data.results.map(mapSaavnResult);
+}
+
 /**
  * Search with optional language and year range filters.
  * Fetches a larger candidate pool and post-filters by the given constraints.
@@ -395,6 +408,7 @@ async function fetchSpotifyPlaylistTracks(spotifyUrl, limit = 50, fallbackSaavnI
 
 module.exports = {
   searchSaavn,
+  searchSaavnPage,
   searchSaavnWithFilters,
   getStreamUrl,
   getSaavnStreamByMetadata,

@@ -101,23 +101,25 @@ class MusicService {
 
   // ─── Artist ────────────────────────────────────────────────────────────────
 
-  /// Fetch artist details using local search.
+  /// Fetch artist details using backend route.
   Future<Artist?> getArtist(String artistId) async {
     try {
-      final tracks = await search('$artistId songs');
-      return Artist(
-        id: artistId,
-        name: artistId,
-        thumbnailUrl: tracks.isNotEmpty ? tracks.first.thumbnailUrl : '',
-        subscribers: 'Unknown',
-        description: '',
-        topSongs: tracks,
-        albums: [],
-        singles: [],
-        relatedArtists: [],
-      );
+      final result = await _api.get('/music/artist/${Uri.encodeComponent(artistId)}');
+      if (result == null) return null;
+      return Artist.fromJson(result as Map<String, dynamic>);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Fetch a specific page of an artist's songs.
+  Future<List<Track>> getArtistSongs(String artistId, int page) async {
+    try {
+      final result = await _api.get('/music/artist/${Uri.encodeComponent(artistId)}/songs?page=$page');
+      if (result == null) return [];
+      return (result as List).map((json) => Track.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return [];
     }
   }
 
@@ -287,6 +289,9 @@ class MusicService {
         },
         'sessionHistory': sessionHistory,
         'sessionArtists': sessionArtists,
+        // Pass mood/energy overrides from voice commands if present
+        if (sessionCtx?.currentMood != null) 'mood': sessionCtx!.currentMood,
+        if (sessionCtx?.currentEnergy != null) 'energy': sessionCtx!.currentEnergy,
       });
 
       if (results is! List) return [];
@@ -295,6 +300,30 @@ class MusicService {
       // Fallback to basic song radio
       debugPrint('getNextTracks error: $e — falling back to song radio');
       return getSongRadio(currentSong.videoId);
+    }
+  }
+
+  /// Parse a raw voice text string into a structured command via the backend NLP.
+  /// Used by Level 2 of VoiceCommandParser for ambiguous natural-language requests.
+  Future<Map<String, dynamic>?> parseVoiceIntent({
+    required String text,
+    String? currentSong,
+    String? currentArtist,
+    List<String> sessionHistory = const [],
+    List<String> sessionArtists = const [],
+  }) async {
+    try {
+      final result = await _api.post('/recommendations/voice-intent', body: {
+        'text': text,
+        'currentSong': currentSong,
+        'currentArtist': currentArtist,
+        'sessionHistory': sessionHistory,
+        'sessionArtists': sessionArtists,
+      });
+      return result as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('parseVoiceIntent error: $e');
+      return null;
     }
   }
 

@@ -7,9 +7,12 @@ import 'package:palette_generator/palette_generator.dart';
 import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/download_provider.dart';
+import '../providers/voice_provider.dart';
+import '../models/voice_command.dart';
 import '../theme/app_theme.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
+import 'search_screen.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -37,6 +40,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _lastVideoId = track.videoId;
       _colorExtracted = false;
       _extractPalette(track.thumbnailUrl);
+    }
+
+    // Handle navigation commands from voice (e.g. "open search")
+    final voiceState = ref.watch(voiceProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (voiceState.lastCommand != null) {
+        _handleNavigationCommand(voiceState.lastCommand!.intent);
+      }
+    });
+  }
+
+  void _handleNavigationCommand(VoiceIntent intent) {
+    switch (intent) {
+      case VoiceIntent.openSearch:
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
+        ref.read(voiceProvider.notifier).reset();
+      case VoiceIntent.openLikedSongs:
+      case VoiceIntent.openPlaylists:
+        Navigator.of(context).pop(); // go back to root shell where library is
+        ref.read(voiceProvider.notifier).reset();
+      default:
+        break;
     }
   }
 
@@ -68,7 +93,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     final isLiked = playlistState.isLiked(track);
-    final isPodcast = track.artist.toLowerCase().contains('podcast') || track.duration.inMinutes > 20;
 
     return Scaffold(
       body: Container(
@@ -304,6 +328,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
                 const Spacer(),
 
+                // ─── Voice Control ────────────────────────────────────────────
+                _VoiceControlBar(),
+
+                const SizedBox(height: 12),
+
                 // ─── Lyrics Drag Up Panel Indicator ──────────────────────────
                 GestureDetector(
                   onTap: () => Navigator.of(context).push(
@@ -339,6 +368,139 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Polished voice control bar that shows mic state + feedback to the user.
+class _VoiceControlBar extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_VoiceControlBar> createState() => _VoiceControlBarState();
+}
+
+class _VoiceControlBarState extends ConsumerState<_VoiceControlBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final voiceState = ref.watch(voiceProvider);
+    final notifier = ref.read(voiceProvider.notifier);
+    final isListening = voiceState.feedback == VoiceFeedback.listening;
+    final isProcessing = voiceState.feedback == VoiceFeedback.processing;
+
+    // Auto-reset after success/error
+    if (voiceState.feedback == VoiceFeedback.success ||
+        voiceState.feedback == VoiceFeedback.error) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) notifier.reset();
+      });
+    }
+
+    return GestureDetector(
+      onTapDown: (_) => notifier.startListening(),
+      onTapUp: (_) => notifier.stopListening(),
+      onTapCancel: () => notifier.stopListening(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+        decoration: BoxDecoration(
+          color: isListening
+              ? const Color(0xFF1DB954).withOpacity(0.15)
+              : Colors.white10,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isListening
+                ? const Color(0xFF1DB954)
+                : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Mic icon — pulses when listening
+            if (isListening)
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (_, __) => Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: const Icon(Icons.mic, color: Color(0xFF1DB954), size: 20),
+                ),
+              )
+            else if (isProcessing)
+              const SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Color(0xFF1DB954),
+                ),
+              )
+            else if (voiceState.feedback == VoiceFeedback.success)
+              const Icon(Icons.check_circle_outline, color: Color(0xFF1DB954), size: 20)
+            else if (voiceState.feedback == VoiceFeedback.error)
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 20)
+            else
+              const Icon(Icons.mic_none, color: Colors.white70, size: 20),
+
+            const SizedBox(width: 10),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isListening
+                        ? 'Listening…'
+                        : isProcessing
+                            ? 'Processing…'
+                            : voiceState.feedback == VoiceFeedback.success
+                                ? voiceState.feedbackMessage
+                                : voiceState.feedback == VoiceFeedback.error
+                                    ? voiceState.feedbackMessage
+                                    : 'Hold to speak',
+                    style: TextStyle(
+                      color: voiceState.feedback == VoiceFeedback.error
+                          ? Colors.redAccent
+                          : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (voiceState.recognizedText.isNotEmpty && isListening)
+                    Text(
+                      '"${voiceState.recognizedText}"',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

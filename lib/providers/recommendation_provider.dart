@@ -12,10 +12,19 @@ import '../services/api_client.dart';
 class SessionContext {
   final List<String> recentSongIds;
   final List<String> recentArtists;
+  /// Voice-set mood override (e.g. 'chill', 'energetic', 'happy'). Null = no override.
+  final String? currentMood;
+  /// Voice-set energy override ('low', 'medium', 'high'). Null = no override.
+  final String? currentEnergy;
+  /// How many consecutive songs the user has skipped this session.
+  final int skipStreak;
 
   const SessionContext({
     this.recentSongIds = const [],
     this.recentArtists = const [],
+    this.currentMood,
+    this.currentEnergy,
+    this.skipStreak = 0,
   });
 
   SessionContext addSong(Track track) {
@@ -26,8 +35,27 @@ class SessionContext {
     return SessionContext(
       recentSongIds: newIds,
       recentArtists: newArtists.take(5).toList(),
+      currentMood: currentMood,
+      currentEnergy: currentEnergy,
+      skipStreak: 0, // reset streak on successful play
     );
   }
+
+  SessionContext recordSkip() => SessionContext(
+        recentSongIds: recentSongIds,
+        recentArtists: recentArtists,
+        currentMood: currentMood,
+        currentEnergy: currentEnergy,
+        skipStreak: skipStreak + 1,
+      );
+
+  SessionContext withMoodOverride(String? mood, String? energy) => SessionContext(
+        recentSongIds: recentSongIds,
+        recentArtists: recentArtists,
+        currentMood: mood,
+        currentEnergy: energy,
+        skipStreak: skipStreak,
+      );
 }
 
 class SessionContextNotifier extends StateNotifier<SessionContext> {
@@ -35,6 +63,15 @@ class SessionContextNotifier extends StateNotifier<SessionContext> {
 
   void addTrack(Track track) {
     state = state.addSong(track);
+  }
+
+  void recordSkip() {
+    state = state.recordSkip();
+  }
+
+  /// Called by VoiceProvider when user says "play something chill" etc.
+  void setMoodOverride(String? mood, String? energy) {
+    state = state.withMoodOverride(mood, energy);
   }
 
   void clear() {

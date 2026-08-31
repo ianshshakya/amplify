@@ -1,5 +1,5 @@
 const express = require('express');
-const { searchSaavn, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics } = require('../utils/saavn');
+const { searchSaavn, searchSaavnPage, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics } = require('../utils/saavn');
 const CreatorSong = require('../models/CreatorSong');
 const { streamCache, metadataCache } = require('../utils/cache');
 const https = require('https');
@@ -166,7 +166,7 @@ router.get('/artist/:id', async (req, res) => {
     const cachedResult = metadataCache.get(cacheKey);
     if (cachedResult) return res.json(cachedResult);
 
-    const tracks = await searchSaavn(`${artistId} top songs`, 10);
+    const tracks = await searchSaavn(`${artistId} top songs`, 50);
     const result = {
       id: artistId,
       name: artistId,
@@ -183,6 +183,25 @@ router.get('/artist/:id', async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get artist' });
+  }
+});
+
+// 4.5 Artist Songs (Paginated)
+router.get('/artist/:id/songs', async (req, res) => {
+  try {
+    const artistId = req.params.id;
+    const page = parseInt(req.query.page) || 1;
+    const cacheKey = `artist_${artistId}_songs_page_${page}`;
+    
+    const cachedResult = metadataCache.get(cacheKey);
+    if (cachedResult) return res.json(cachedResult);
+
+    const tracks = await searchSaavnPage(`${artistId} top songs`, page);
+    
+    metadataCache.set(cacheKey, tracks);
+    res.json(tracks);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get artist songs' });
   }
 });
 

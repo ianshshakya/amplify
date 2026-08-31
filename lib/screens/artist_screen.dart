@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../providers/home_provider.dart';
+import '../providers/artist_songs_provider.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/album_card.dart';
 import '../widgets/artist_card.dart';
@@ -21,10 +22,30 @@ class ArtistScreen extends ConsumerStatefulWidget {
 
 class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   bool _isFollowing = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(artistSongsProvider(widget.artistId).notifier).loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final artistDetailAsync = ref.watch(artistDetailProvider(widget.artistId));
+    final songsState = ref.watch(artistSongsProvider(widget.artistId));
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -34,9 +55,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             return const Center(child: Text('Artist not found', style: TextStyle(color: Colors.white)));
           }
 
-          final topSongs = artist.topSongs;
-
           return CustomScrollView(
+            controller: _scrollController,
             slivers: [
               SliverAppBar(
                 expandedHeight: 280,
@@ -108,23 +128,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ),
                 ),
               ),
-              if (topSongs.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: const SectionHeader(title: 'Top Songs', padding: EdgeInsets.symmetric(horizontal: 16)),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return TrackTile(
-                        track: topSongs[index],
-                        context_: topSongs,
-                        trackNumber: index + 1,
-                      );
-                    },
-                    childCount: topSongs.length > 5 ? 5 : topSongs.length,
-                  ),
-                ),
-              ],
+              
               if (artist.albums.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: const SectionHeader(title: 'Albums', padding: EdgeInsets.all(16)),
@@ -153,6 +157,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ),
                 ),
               ],
+              
               if (artist.singles.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: const SectionHeader(title: 'Singles', padding: EdgeInsets.all(16)),
@@ -181,6 +186,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ),
                 ),
               ],
+              
               if (artist.relatedArtists.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: const SectionHeader(title: 'Related Artists', padding: EdgeInsets.all(16)),
@@ -208,8 +214,36 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
+              
+              SliverToBoxAdapter(
+                child: const SectionHeader(title: 'All Songs', padding: EdgeInsets.all(16)),
+              ),
+              
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index == songsState.songs.length) {
+                      return Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Center(
+                          child: songsState.hasReachedMax 
+                              ? const Text('End of Discography', style: TextStyle(color: Colors.white54))
+                              : const CircularProgressIndicator(color: Color(0xFF1DB954)),
+                        ),
+                      );
+                    }
+                    return TrackTile(
+                      track: songsState.songs[index],
+                      context_: songsState.songs,
+                      trackNumber: index + 1,
+                    );
+                  },
+                  childCount: songsState.songs.length + 1,
+                ),
+              ),
+              
+              const SliverToBoxAdapter(child: SizedBox(height: 100)), // padding for miniplayer
             ],
           );
         },

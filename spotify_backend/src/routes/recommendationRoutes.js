@@ -174,4 +174,83 @@ router.get('/discover', async (req, res) => {
   }
 });
 
+/**
+ * @route POST /api/recommendations/voice-intent
+ * @desc Parse a raw voice text string into a structured VoiceCommand JSON.
+ *       Uses the existing rule-based PlaylistIntentEngine — no LLM required.
+ *       Body: { text, currentSong?, currentArtist?, sessionHistory?, sessionArtists? }
+ */
+router.post('/voice-intent', async (req, res) => {
+  try {
+    const { text, currentSong, currentArtist, sessionHistory = [], sessionArtists = [] } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Missing text field' });
+    }
+
+    const normalized = text.trim().toLowerCase();
+
+    // ── Map common voice phrases to structured commands ──────────────────────
+
+    // Simple playback (these are handled deterministically on the client,
+    // but we keep them here as a fallback)
+    if (/^(play|resume|unpause|continue)$/.test(normalized)) {
+      return res.json({ intent: 'play', explanation: 'Resuming playback' });
+    }
+    if (/^(pause|stop)$/.test(normalized)) {
+      return res.json({ intent: 'pause', explanation: 'Pausing' });
+    }
+    if (/^(next|skip|next song|next track)$/.test(normalized)) {
+      return res.json({ intent: 'next', explanation: 'Skipping to next' });
+    }
+
+    // "Play [song/artist]" — anything that starts with "play" + content
+    const playQueryMatch = normalized.match(/^(?:play|search for|find)\s+(.+)$/);
+    if (playQueryMatch) {
+      const query = playQueryMatch[1];
+      // Avoid treating mood requests as search queries
+      const moodWords = ['something', 'some music', 'a song', 'me music', 'music'];
+      const isMoodRequest = moodWords.some(w => query.startsWith(w)) || 
+                            /\b(chill|relax|energet|happy|sad|calm|workout|party|focus|study)\b/.test(query);
+      if (!isMoodRequest) {
+        return res.json({ intent: 'searchAndPlay', query, explanation: `Searching for "${query}"` });
+      }
+    }
+
+    // ── Mood / Energy / Recommendation requests ──────────────────────────────
+    // Use the PlaylistIntentEngine to extract archetype
+    const intent = parseIntent(normalized);
+
+    const moodMap = {
+      workout: { mood: 'energetic', energy: 'high' },
+      party:   { mood: 'energetic', energy: 'high' },
+      chill:   { mood: 'chill',     energy: 'low'  },
+      relax:   { mood: 'chill',     energy: 'low'  },
+      focus:   { mood: 'focus',     energy: 'medium' },
+      romance: { mood: 'romantic',  energy: 'low'  },
+      nostalgia: { mood: 'nostalgic', energy: 'medium' },
+      discover: { mood: 'discover', energy: 'medium' },
+      'hip-hop': { mood: 'hip-hop', energy: 'high' },
+      charts:  { mood: 'popular',   energy: 'medium' },
+    };
+
+    const moodInfo = moodMap[intent.purpose] || { mood: intent.purpose || 'popular', energy: 'medium' };
+
+    // Build a human-readable explanation
+    let explanation = `Finding ${moodInfo.mood} music`;
+    if (currentSong) explanation += ` based on "${currentSong}"`;
+
+    return res.json({
+      intent: 'recommendation',
+      mood: moodInfo.mood,
+      energy: moodInfo.energy,
+      purpose: intent.purpose,
+      explanation,
+    });
+
+  } catch (error) {
+    console.error('Voice intent error:', error.message);
+    res.status(500).json({ error: 'Failed to parse voice intent' });
+  }
+});
+
 module.exports = router;

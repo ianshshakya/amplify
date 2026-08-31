@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/playlist_provider.dart';
 import 'login_screen.dart';
@@ -66,7 +67,7 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
       final latestVersion = res['latestVersion'] as String?;
       final downloadUrl = res['downloadUrl'] as String?;
       
-      const currentVersion = '1.0.0'; 
+      const currentVersion = '1.1.0'; 
       if (latestVersion != null && latestVersion != currentVersion && downloadUrl != null) {
         if (!mounted) return;
         showDialog(
@@ -81,14 +82,17 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
                 child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Visit: $downloadUrl to download'),
-                      duration: const Duration(seconds: 10),
-                    ),
-                  );
+                  final uri = Uri.parse(downloadUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not open link: $downloadUrl')),
+                    );
+                  }
                 },
                 child: const Text('Update', style: TextStyle(color: Colors.greenAccent)),
               ),
