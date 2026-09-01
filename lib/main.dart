@@ -3,7 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'providers/settings_provider.dart';
 import 'screens/auth_gate.dart';
+import 'screens/ask_julu_screen.dart';
+import 'services/notification_service.dart';
+import 'providers/voice_provider.dart';
 import 'theme/app_theme.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,21 +23,49 @@ Future<void> main() async {
   );
 
   runApp(
-    // ProviderScope is the Riverpod equivalent of MultiProvider —
-    // it must wrap the entire widget tree.
+    // ProviderScope is the Riverpod equivalent of MultiProvider
     const ProviderScope(child: AmplifyApp()),
   );
 }
 
-class AmplifyApp extends ConsumerWidget {
+class AmplifyApp extends ConsumerStatefulWidget {
   const AmplifyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AmplifyApp> createState() => _AmplifyAppState();
+}
+
+class _AmplifyAppState extends ConsumerState<AmplifyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize notification service and handle taps
+    NotificationService().initialize((payload) {
+      if (payload == 'julu_voice') {
+        _handleJuluNotification();
+      }
+    });
+
+    // Show the persistent notification
+    NotificationService().showJuluPersistentNotification();
+  }
+
+  void _handleJuluNotification() {
+    // Navigate to Ask Julu Screen
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => const AskJuluScreen()),
+    );
+    // Start listening instantly
+    ref.read(voiceProvider.notifier).startListening();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Watch settings so theme changes apply immediately.
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Amplify',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -42,3 +75,5 @@ class AmplifyApp extends ConsumerWidget {
     );
   }
 }
+
+

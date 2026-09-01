@@ -11,10 +11,13 @@ enum VoiceIntent {
   volumeUp,       // Increase volume
   volumeDown,     // Decrease volume
   setVolume,      // Set volume to a specific percent
+  openHome,       // Navigate to the home screen
   openSearch,     // Navigate to the search screen
+  openLibrary,    // Navigate to the library screen
   openLikedSongs, // Navigate to liked songs
   openPlaylists,  // Navigate to playlists
   recommendation, // Get a recommendation based on mood/energy/context
+  chat,           // Conversational response from Julu
   unknown,        // Could not determine intent
 }
 
@@ -37,6 +40,12 @@ class VoiceCommand {
   /// Human-readable explanation of what will be done (shown in the UI)
   final String? explanation;
 
+  /// For recommendation: AI-suggested songs if the intent is recommendation
+  final List<Map<String, String>>? suggestedSongs;
+
+  /// For chat: The conversational response from Julu
+  final String? chatResponse;
+
   const VoiceCommand({
     required this.intent,
     this.query,
@@ -44,6 +53,8 @@ class VoiceCommand {
     this.energy,
     this.volumePercent,
     this.explanation,
+    this.suggestedSongs,
+    this.chatResponse,
   });
 
   factory VoiceCommand.unknown(String text) => VoiceCommand(
@@ -55,6 +66,16 @@ class VoiceCommand {
     final intentStr = json['intent'] as String? ?? 'unknown';
     final intent = _parseIntent(intentStr);
 
+    List<Map<String, String>>? parsedSongs;
+    if (json['suggestedSongs'] is List) {
+      parsedSongs = (json['suggestedSongs'] as List).map((song) {
+        return {
+          'title': song['title']?.toString() ?? '',
+          'artist': song['artist']?.toString() ?? '',
+        };
+      }).toList();
+    }
+
     return VoiceCommand(
       intent: intent,
       query: json['query'] as String?,
@@ -62,6 +83,8 @@ class VoiceCommand {
       energy: json['energy'] as String?,
       volumePercent: (json['volumePercent'] as num?)?.toInt(),
       explanation: json['explanation'] as String?,
+      suggestedSongs: parsedSongs,
+      chatResponse: json['chatResponse'] as String?,
     );
   }
 
@@ -85,13 +108,18 @@ class VoiceCommand {
       'volumeDown': VoiceIntent.volumeDown,
       'set_volume': VoiceIntent.setVolume,
       'setVolume': VoiceIntent.setVolume,
+      'open_home': VoiceIntent.openHome,
+      'openHome': VoiceIntent.openHome,
       'open_search': VoiceIntent.openSearch,
       'openSearch': VoiceIntent.openSearch,
+      'open_library': VoiceIntent.openLibrary,
+      'openLibrary': VoiceIntent.openLibrary,
       'open_liked_songs': VoiceIntent.openLikedSongs,
       'openLikedSongs': VoiceIntent.openLikedSongs,
       'open_playlists': VoiceIntent.openPlaylists,
       'openPlaylists': VoiceIntent.openPlaylists,
       'recommendation': VoiceIntent.recommendation,
+      'chat': VoiceIntent.chat,
     };
     return map[raw] ?? VoiceIntent.unknown;
   }

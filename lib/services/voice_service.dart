@@ -72,8 +72,8 @@ class VoiceService {
           onResult(result.recognizedWords, result.finalResult);
         },
         listenOptions: stt.SpeechListenOptions(
-          listenFor: const Duration(seconds: 8),
-          pauseFor: const Duration(seconds: 2),
+          listenFor: const Duration(seconds: 15),
+          pauseFor: const Duration(milliseconds: 1000),
           cancelOnError: true,
           partialResults: true,
           onDevice: false,

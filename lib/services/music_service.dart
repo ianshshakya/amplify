@@ -303,6 +303,23 @@ class MusicService {
     }
   }
 
+  /// Generate a dynamic playlist based on a natural language intent (e.g. "smooth", "energetic workout").
+  Future<List<Track>> generatePlaylist(String intent) async {
+    try {
+      final result = await _api.post('/recommendations/playlist', body: {
+        'intent': intent,
+        'targetCount': 20,
+      });
+      if (result != null && result['songs'] is List) {
+        return (result['songs'] as List).map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('generatePlaylist error: $e');
+      return [];
+    }
+  }
+
   /// Parse a raw voice text string into a structured command via the backend NLP.
   /// Used by Level 2 of VoiceCommandParser for ambiguous natural-language requests.
   Future<Map<String, dynamic>?> parseVoiceIntent({

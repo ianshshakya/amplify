@@ -4,6 +4,7 @@ import '../widgets/mini_player.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
+import 'ask_julu_screen.dart';
 
 /// The responsive app shell.
 /// Adapts between Desktop (Sidebar + Bottom Player) and Mobile (Bottom Nav + Mini Player).
@@ -21,6 +22,7 @@ class _RootShellState extends State<RootShell> {
     HomeScreen(),
     SearchScreen(),
     LibraryScreen(),
+    AskJuluScreen(),
   ];
 
   @override
@@ -92,6 +94,12 @@ class _RootShellState extends State<RootShell> {
             isSelected: _index == 2,
             onTap: () => setState(() => _index = 2),
           ),
+          _SidebarItem(
+            icon: Icons.auto_awesome,
+            label: 'Ask Julu',
+            isSelected: _index == 3,
+            onTap: () => setState(() => _index = 3),
+          ),
         ],
       ),
     );
@@ -112,7 +120,9 @@ class _RootShellState extends State<RootShell> {
               BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
               BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
               BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'),
+              BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'Julu'),
             ],
+            type: BottomNavigationBarType.fixed, // Ensure >3 items show correctly
           ),
         ],
       ),
