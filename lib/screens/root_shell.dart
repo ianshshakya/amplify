@@ -4,7 +4,7 @@ import '../widgets/mini_player.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
-import 'ask_julu_screen.dart';
+import 'ask_bingo_screen.dart';
 
 /// The responsive app shell.
 /// Adapts between Desktop (Sidebar + Bottom Player) and Mobile (Bottom Nav + Mini Player).
@@ -22,7 +22,7 @@ class _RootShellState extends State<RootShell> {
     HomeScreen(),
     SearchScreen(),
     LibraryScreen(),
-    AskJuluScreen(),
+    AskBingoScreen(),
   ];
 
   @override
@@ -96,7 +96,7 @@ class _RootShellState extends State<RootShell> {
           ),
           _SidebarItem(
             icon: Icons.auto_awesome,
-            label: 'Ask Julu',
+            label: 'Bingo',
             isSelected: _index == 3,
             onTap: () => setState(() => _index = 3),
           ),

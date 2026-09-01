@@ -7,6 +7,7 @@ import 'package:palette_generator/palette_generator.dart';
 import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/download_provider.dart';
+import '../providers/voice_provider.dart';
 import '../theme/app_theme.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
@@ -95,14 +96,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       icon: const Icon(Icons.keyboard_arrow_down, size: 32, color: Colors.white),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const Text(
-                      'NOW PLAYING',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        color: AppColors.textSecondary,
-                      ),
+                    Column(
+                      children: [
+                        const Text(
+                          'NOW PLAYING',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Consumer(
+                          builder: (context, ref, child) {
+                            // Assumes voice_provider.dart is imported
+                            final voiceState = ref.watch(voiceProvider);
+                            if (!voiceState.isHandsFreeEnabled) return const SizedBox.shrink();
+                            
+                            String statusText = '🎙️ Hey Bingo enabled';
+                            if (voiceState.feedback == VoiceAssistantState.listeningForCommand || voiceState.feedback == VoiceAssistantState.wakeDetected) {
+                              statusText = '🎙️ Listening...';
+                            } else if (voiceState.feedback == VoiceAssistantState.success && voiceState.feedbackMessage.isNotEmpty) {
+                              statusText = '✓ ${voiceState.feedbackMessage}';
+                            } else if (voiceState.feedback == VoiceAssistantState.error) {
+                              statusText = '✕ ${voiceState.feedbackMessage}';
+                            } else if (voiceState.feedback == VoiceAssistantState.processing || voiceState.feedback == VoiceAssistantState.executing) {
+                              statusText = '🎙️ Processing...';
+                            }
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                statusText,
+                                style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.queue_music, color: Colors.white),

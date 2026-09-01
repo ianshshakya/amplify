@@ -31,27 +31,23 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
-  Future<void> showJuluPersistentNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'julu_assistant_channel',
-      'Julu Assistant',
-      channelDescription: 'Quick access to Ask Julu',
+  Future<void> showBingoPersistentNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'bingo_assistant_channel',
+      'Bingo Assistant',
+      channelDescription: 'Quick access to Ask Bingo',
       importance: Importance.low,
       priority: Priority.low,
       ongoing: true, // Makes it persistent in the notification drawer
       autoCancel: false,
     );
 
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
     await _notificationsPlugin.show(
-      id: 888,
-      title: 'Ask Julu 🎙️',
-      body: 'Tap to start voice assistant',
-      notificationDetails: platformChannelSpecifics,
-      payload: 'julu_voice',
+      888,
+      'Ask Bingo 🎙️',
+      'Tap to issue a voice command',
+      const NotificationDetails(android: androidDetails),
+      payload: 'bingo_voice',
     );
   }
 }

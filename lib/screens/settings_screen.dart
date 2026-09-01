@@ -7,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../providers/auth_provider.dart';
 // Also assume AuthGate is in auth_gate.dart
 import 'auth_gate.dart';
+import '../providers/voice_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -67,6 +68,26 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
           ),
+          const Divider(color: Color(0xFF282828)),
+          
+          // Section - Voice Assistant
+          Consumer(
+            builder: (context, ref, child) {
+              // Assuming you have imported voice_provider.dart
+              // Wait, I should add the import first!
+              final voiceState = ref.watch(voiceProvider);
+              return SwitchListTile(
+                title: const Text('Hands-Free Voice Assistant', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Listen for "Hey Bingo" in background', style: TextStyle(color: Color(0xFFB3B3B3))),
+                activeColor: const Color(0xFF1DB954),
+                value: voiceState.isHandsFreeEnabled,
+                onChanged: (value) {
+                  ref.read(voiceProvider.notifier).toggleHandsFree();
+                },
+              );
+            },
+          ),
+
           const Divider(color: Color(0xFF282828)),
 
           // Section 4 - Storage

@@ -1,77 +1,184 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/track.dart';
 import '../models/voice_command.dart';
 import '../providers/player_provider.dart';
 import '../providers/recommendation_provider.dart';
-
 import '../services/voice_service.dart';
 import '../services/voice_command_parser.dart';
 import '../services/music_service.dart';
+import '../services/wake_word_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-/// UI feedback state that the voice overlay displays to the user.
-enum VoiceFeedback {
-  idle,        // Mic button available, not active
-  listening,   // Currently recording audio
-  processing,  // Running command through parser / network
-  success,     // Command executed successfully
-  error,       // Something went wrong
+enum VoiceAssistantState {
+  disabled,
+  idle,                // Mic button available, not active
+  waitingForWakeWord,  // Background listening for "Hey Bingo"
+  wakeDetected,        // Wake word heard, ducking audio
+  listeningForCommand, // Recording user speech
+  processing,          // Running command through NLP
+  executing,           // Executing player action
+  error,
+  success,
 }
 
 @immutable
 class VoiceState {
-  final VoiceFeedback feedback;
+  final VoiceAssistantState feedback;
   final String recognizedText;
   final String feedbackMessage;
   final VoiceCommand? lastCommand;
+  final bool isHandsFreeEnabled;
 
   const VoiceState({
-    this.feedback = VoiceFeedback.idle,
+    this.feedback = VoiceAssistantState.idle,
     this.recognizedText = '',
     this.feedbackMessage = '',
     this.lastCommand,
+    this.isHandsFreeEnabled = false,
   });
 
   VoiceState copyWith({
-    VoiceFeedback? feedback,
+    VoiceAssistantState? feedback,
     String? recognizedText,
     String? feedbackMessage,
     VoiceCommand? lastCommand,
+    bool? isHandsFreeEnabled,
   }) =>
       VoiceState(
         feedback: feedback ?? this.feedback,
         recognizedText: recognizedText ?? this.recognizedText,
         feedbackMessage: feedbackMessage ?? this.feedbackMessage,
         lastCommand: lastCommand ?? this.lastCommand,
+        isHandsFreeEnabled: isHandsFreeEnabled ?? this.isHandsFreeEnabled,
       );
 }
 
-/// Orchestrates the full voice control flow:
-///   Mic tap → VoiceService (STT) → VoiceCommandParser → PlayerNotifier action
-///
-/// Does NOT contain business logic — delegates everything to services/providers.
+final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
+  return VoiceNotifier(ref);
+});
+
 class VoiceNotifier extends StateNotifier<VoiceState> {
   final Ref _ref;
   final VoiceService _voiceService = VoiceService();
   final VoiceCommandParser _parser = VoiceCommandParser();
   final MusicService _musicService = MusicService();
+  final WakeWordService _wakeWordService = WakeWordService();
+  
+  Timer? _initialSilenceTimer;
+  StreamSubscription? _wakeWordSub;
 
-  VoiceNotifier(this._ref) : super(const VoiceState());
+  VoiceNotifier(this._ref) : super(const VoiceState()) {
+    _init();
+  }
 
-  // ─── Public API ────────────────────────────────────────────────────────────
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('hands_free_enabled') ?? false;
+    if (isEnabled) {
+      await enableHandsFree();
+    }
+  }
+
+  @override
+  void dispose() {
+    _wakeWordSub?.cancel();
+    _wakeWordService.dispose();
+    super.dispose();
+  }
+
+  Future<void> enableHandsFree() async {
+    // Request microphone permission before starting
+    final status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      _setError('Microphone permission is required for Hands-Free mode.');
+      return;
+    }
+
+    final success = await _wakeWordService.start();
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hands_free_enabled', true);
+      
+      _wakeWordSub?.cancel();
+      _wakeWordSub = _wakeWordService.wakeWordDetected.listen((_) {
+        handleWakeWordDetected();
+      });
+
+      state = state.copyWith(
+        isHandsFreeEnabled: true,
+        feedback: VoiceAssistantState.waitingForWakeWord,
+      );
+    } else {
+      _setError('Failed to start wake word engine.');
+    }
+  }
+
+  Future<void> disableHandsFree() async {
+    await _wakeWordService.stop();
+    _wakeWordSub?.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hands_free_enabled', false);
+    
+    state = state.copyWith(
+      isHandsFreeEnabled: false,
+      feedback: VoiceAssistantState.idle,
+    );
+  }
+
+  Future<void> toggleHandsFree() async {
+    if (state.isHandsFreeEnabled) {
+      await disableHandsFree();
+    } else {
+      await enableHandsFree();
+    }
+  }
+
+  Future<void> handleWakeWordDetected() async {
+    if (state.feedback == VoiceAssistantState.listeningForCommand || 
+        state.feedback == VoiceAssistantState.processing) {
+      return; // Already busy
+    }
+
+    state = state.copyWith(feedback: VoiceAssistantState.wakeDetected);
+    
+    // Audio ducking
+    final player = _ref.read(playerProvider.notifier);
+    final wasPlaying = _ref.read(playerProvider).isPlaying;
+    if (wasPlaying) {
+      await player.setVolume(0.2); // Duck volume
+    }
+
+    await startListening();
+    
+    // Restore volume after listening completes is handled in _cleanupAfterCommand
+  }
 
   Future<void> startListening() async {
-    if (state.feedback == VoiceFeedback.listening) return;
+    if (state.feedback == VoiceAssistantState.listeningForCommand) return;
 
-    state = const VoiceState(
-      feedback: VoiceFeedback.listening,
+    state = state.copyWith(
+      feedback: VoiceAssistantState.listeningForCommand,
       feedbackMessage: 'Listening…',
+      recognizedText: '',
     );
 
     String recognized = '';
+    _initialSilenceTimer?.cancel();
+    _initialSilenceTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && state.feedback == VoiceAssistantState.listeningForCommand && state.recognizedText.isEmpty) {
+        _voiceService.stopListening();
+        _setError("Didn't hear anything — try again.");
+      }
+    });
 
     final started = await _voiceService.startListening(
       onResult: (text, isFinal) {
+        if (text.isNotEmpty) {
+          _initialSilenceTimer?.cancel();
+        }
         recognized = text;
         state = state.copyWith(recognizedText: text);
         if (isFinal && text.isNotEmpty) {
@@ -79,13 +186,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         }
       },
       onDone: () async {
-        if (state.feedback == VoiceFeedback.listening) {
+        _initialSilenceTimer?.cancel();
+        if (state.feedback == VoiceAssistantState.listeningForCommand) {
           if (recognized.isEmpty) {
-            // Wait a tiny bit just in case onResult is about to fire with the final text
             await Future.delayed(const Duration(milliseconds: 500));
-            // If it's still listening, then it truly didn't hear anything
-            if (mounted && state.feedback == VoiceFeedback.listening) {
-              _setError("Didn't hear anything — try again.");
+            if (mounted && state.feedback == VoiceAssistantState.listeningForCommand) {
+              if (recognized.isEmpty) {
+                reset();
+              } else {
+                _handleFinalResult(recognized);
+              }
             }
           } else {
             _handleFinalResult(recognized);
@@ -96,17 +206,18 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
     if (!started) {
       _setError('Microphone unavailable. Check permissions.');
+      _cleanupAfterCommand();
     }
   }
 
   Future<void> stopListening() async {
-    if (state.feedback != VoiceFeedback.listening) return;
+    _initialSilenceTimer?.cancel();
+    if (state.feedback != VoiceAssistantState.listeningForCommand) return;
     await _voiceService.stopListening();
-    // The state will be finalized by the onDone callback when the STT engine stops.
   }
 
   Future<void> toggleListening() async {
-    if (state.feedback == VoiceFeedback.listening) {
+    if (state.feedback == VoiceAssistantState.listeningForCommand) {
       await stopListening();
     } else {
       await startListening();
@@ -114,21 +225,50 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   void reset() {
-    state = const VoiceState();
+    _cleanupAfterCommand();
+    state = state.copyWith(
+      feedback: state.isHandsFreeEnabled ? VoiceAssistantState.waitingForWakeWord : VoiceAssistantState.idle,
+      recognizedText: '',
+      feedbackMessage: '',
+    );
   }
 
-  // ─── Private ───────────────────────────────────────────────────────────────
+  void _setError(String message) {
+    _cleanupAfterCommand();
+    state = state.copyWith(
+      feedback: VoiceAssistantState.error,
+      feedbackMessage: message,
+    );
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && state.feedback == VoiceAssistantState.error) reset();
+    });
+  }
+
+  void _setSuccess(String message) {
+    _cleanupAfterCommand();
+    state = state.copyWith(
+      feedback: VoiceAssistantState.success,
+      feedbackMessage: message,
+    );
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && state.feedback == VoiceAssistantState.success) reset();
+    });
+  }
+  
+  void _cleanupAfterCommand() {
+    final player = _ref.read(playerProvider.notifier);
+    player.setVolume(1.0); // Restore volume
+  }
 
   Future<void> _handleFinalResult(String text) async {
-    if (state.feedback == VoiceFeedback.processing) return; // already processing
+    if (state.feedback == VoiceAssistantState.processing) return;
 
     state = state.copyWith(
-      feedback: VoiceFeedback.processing,
+      feedback: VoiceAssistantState.processing,
       feedbackMessage: 'Processing…',
       recognizedText: text,
     );
 
-    // Get context so the parser can handle "something like this"
     final playerState = _ref.read(playerProvider);
     final sessionCtx = _ref.read(sessionContextProvider);
     final currentTrack = playerState.currentTrack;
@@ -152,6 +292,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     final player = _ref.read(playerProvider.notifier);
     final sessionNotifier = _ref.read(sessionContextProvider.notifier);
 
+    state = state.copyWith(feedback: VoiceAssistantState.executing);
+
     try {
       switch (command.intent) {
         case VoiceIntent.play:
@@ -172,7 +314,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           _setSuccess('Going to previous song');
 
         case VoiceIntent.volumeUp:
-          // just_audio does not expose device volume — show feedback only
           _setSuccess('Volume increased (use system controls)');
 
         case VoiceIntent.volumeDown:
@@ -182,7 +323,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           _setSuccess('Set volume to ${command.volumePercent}% (use system controls)');
 
         case VoiceIntent.clearQueue:
-          // Not directly exposed — we'll navigate; inform user
           _setSuccess('Queue cleared is not supported yet');
 
         case VoiceIntent.addToQueue:
@@ -199,13 +339,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         case VoiceIntent.openPlaylists:
         case VoiceIntent.openHome:
         case VoiceIntent.openLibrary:
-          // Navigation is handled by UI layer listening to lastCommand
           final msg = command.explanation ?? 'Navigating…';
-          state = state.copyWith(
-            feedback: VoiceFeedback.success,
-            feedbackMessage: msg,
-            lastCommand: command,
-          );
+          _setSuccess(msg);
 
         case VoiceIntent.searchAndPlay:
           final query = command.query ?? '';
@@ -222,88 +357,31 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           _setSuccess('Playing "${tracks.first.title}"');
 
         case VoiceIntent.recommendation:
-          // Apply mood/energy to session so the autoplay engine picks it up
           sessionNotifier.setMoodOverride(command.mood, command.energy);
 
-          // If Groq provided specific AI-curated songs, search for them!
           if (command.suggestedSongs != null && command.suggestedSongs!.isNotEmpty) {
             _setSuccess('Generating AI playlist for ${command.mood ?? "you"}...');
             final List<Track> aiTracks = [];
-            
-            // Search for all suggested songs concurrently for speed
-            final futures = command.suggestedSongs!.map((song) async {
-              final q = '${song['title']} ${song['artist']}';
-              final tracks = await _musicService.search(q);
-              if (tracks.isNotEmpty) return tracks.first;
-              return null;
-            });
-            
-            final results = await Future.wait(futures);
-            aiTracks.addAll(results.whereType<Track>());
-
+            for (final song in command.suggestedSongs!) {
+              final q = '${song["title"]} ${song["artist"]}';
+              final res = await _musicService.search(q);
+              if (res.isNotEmpty) aiTracks.add(res.first);
+            }
             if (aiTracks.isNotEmpty) {
               await player.playTrack(aiTracks.first, context: aiTracks);
-              final msg = 'I found some great songs for you. Playing ${command.mood ?? "your playlist"} now!';
-              _setSuccess(msg);
-              return;
-            }
-          }
-
-          // Fallback if no suggested songs (or if searches failed)
-          final currentTrack = _ref.read(playerProvider).currentTrack;
-          if (currentTrack != null) {
-            final nextTracks = await _musicService.getNextTracks(
-              currentTrack,
-              _ref.read(sessionContextProvider),
-            );
-            if (nextTracks.isNotEmpty) {
-              await player.playTrack(nextTracks.first, context: nextTracks.toList());
-              final moodLabel = command.mood ?? command.energy ?? 'requested';
-              _setSuccess('Playing $moodLabel music');
-            } else {
-              _setError('Could not find songs for that mood right now');
             }
           } else {
-            // Nothing playing — use intelligent playlist generation
-            final query = command.mood ?? command.energy ?? 'popular';
-            final tracks = await _musicService.generatePlaylist(query);
-            if (tracks.isNotEmpty) {
-              await player.playTrack(tracks.first, context: tracks.toList());
-              _setSuccess('Playing $query music');
-            } else {
-              _setError('Could not generate a playlist for that right now');
-            }
+            _setSuccess(command.explanation ?? 'Applying ${command.mood} mood');
           }
-
+          
         case VoiceIntent.chat:
-          final response = command.chatResponse ?? command.explanation ?? "I'm not sure how to respond to that.";
-          _setSuccess(response);
+          _setSuccess(command.chatResponse ?? 'I am here to help!');
 
         case VoiceIntent.unknown:
-          final msg = command.explanation ?? 'Could not understand that';
-          _setError(msg);
+          _setError(command.explanation ?? "Sorry, I didn't catch that.");
       }
     } catch (e) {
-      debugPrint('[VoiceProvider] Command execution error: $e');
-      _setError('Something went wrong — try again');
+      _setError('Error executing command: $e');
     }
   }
-
-  void _setSuccess(String message) {
-    state = state.copyWith(
-      feedback: VoiceFeedback.success,
-      feedbackMessage: message,
-    );
-  }
-
-  void _setError(String message) {
-    state = state.copyWith(
-      feedback: VoiceFeedback.error,
-      feedbackMessage: message,
-    );
-  }
 }
-
-final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>(
-  (ref) => VoiceNotifier(ref),
-);

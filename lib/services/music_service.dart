@@ -27,7 +27,16 @@ class MusicService {
     try {
       final results = await _api.get('/music/search?q=${Uri.encodeComponent(query)}');
       if (results is! List) return [];
-      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+      final tracks = results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+      
+      // Filter out duplicate tracks (by videoId)
+      final uniqueTracks = <String, Track>{};
+      for (final t in tracks) {
+        if (!uniqueTracks.containsKey(t.videoId)) {
+          uniqueTracks[t.videoId] = t;
+        }
+      }
+      return uniqueTracks.values.toList();
     } catch (e) {
       debugPrint('Search error: $e');
       return [];

@@ -17,7 +17,7 @@ enum VoiceIntent {
   openLikedSongs, // Navigate to liked songs
   openPlaylists,  // Navigate to playlists
   recommendation, // Get a recommendation based on mood/energy/context
-  chat,           // Conversational response from Julu
+  chat,           // Conversational response from Bingo
   unknown,        // Could not determine intent
 }
 
@@ -43,7 +43,7 @@ class VoiceCommand {
   /// For recommendation: AI-suggested songs if the intent is recommendation
   final List<Map<String, String>>? suggestedSongs;
 
-  /// For chat: The conversational response from Julu
+  /// For chat: The conversational response from Bingo
   final String? chatResponse;
 
   const VoiceCommand({

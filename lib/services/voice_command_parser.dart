@@ -160,11 +160,19 @@ class VoiceCommandParser {
     const prefixes = ['play ', 'search for ', 'find '];
     for (final prefix in prefixes) {
       if (text.startsWith(prefix)) {
-        final rest = text.substring(prefix.length).trim();
+        String rest = text.substring(prefix.length).trim();
         if (rest.isNotEmpty) {
           final firstWord = rest.split(' ').first;
           // If the first word is a mood-y filler, let Level 2 handle it
           if (moodWords.contains(firstWord)) return null;
+          
+          // Clean up "play by X" or "play from X" directly
+          if (rest.startsWith('by ')) {
+            rest = rest.substring(3).trim();
+          } else if (rest.startsWith('from ')) {
+            rest = rest.substring(5).trim();
+          }
+          
           return rest;
         }
       }

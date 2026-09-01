@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'providers/settings_provider.dart';
 import 'screens/auth_gate.dart';
-import 'screens/ask_julu_screen.dart';
+import 'screens/ask_bingo_screen.dart';
 import 'services/notification_service.dart';
 import 'providers/voice_provider.dart';
 import 'theme/app_theme.dart';
@@ -41,19 +41,19 @@ class _AmplifyAppState extends ConsumerState<AmplifyApp> {
     super.initState();
     // Initialize notification service and handle taps
     NotificationService().initialize((payload) {
-      if (payload == 'julu_voice') {
-        _handleJuluNotification();
+      if (payload == 'bingo_voice') {
+        _handleBingoNotification();
       }
     });
 
     // Show the persistent notification
-    NotificationService().showJuluPersistentNotification();
+    NotificationService().showBingoPersistentNotification();
   }
 
-  void _handleJuluNotification() {
-    // Navigate to Ask Julu Screen
+  void _handleBingoNotification() {
+    // Navigate to Ask Bingo Screen
     navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => const AskJuluScreen()),
+      MaterialPageRoute(builder: (_) => const AskBingoScreen()),
     );
     // Start listening instantly
     ref.read(voiceProvider.notifier).startListening();

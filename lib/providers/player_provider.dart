@@ -34,6 +34,8 @@ class PlayerState {
     this.duration = Duration.zero,
   });
 
+  bool get isPlaying => status == PlaybackStatus.playing;
+
   PlayerState copyWith({
     Track? currentTrack,
     List<Track>? queue,
@@ -70,6 +72,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
   bool _isFetchingRadio = false;
+
+  Future<void> setVolume(double volume) async {
+    await _audioPlayer.setVolume(volume);
+  }
 
   PlayerNotifier({Ref? ref}) : super(const PlayerState()) {
     _ref = ref;
