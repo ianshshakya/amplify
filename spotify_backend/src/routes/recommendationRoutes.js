@@ -208,7 +208,7 @@ router.post('/voice-intent', async (req, res) => {
 Analyze the user's input and return ONLY a valid JSON object matching this schema:
 {
   "intent": "play|pause|next|searchAndPlay|recommendation|openHome|openSearch|openLibrary|chat|unknown",
-  "query": "string (for searchAndPlay)",
+  "query": "string (for searchAndPlay - extract ONLY the core entity name, omitting words like 'by', 'songs from', e.g. 'play by taylor swift' -> 'taylor swift')",
   "mood": "string (for recommendation e.g. chill, energetic, sad)",
   "energy": "low|medium|high",
   "explanation": "short string explaining action",
@@ -250,7 +250,7 @@ Do not output markdown, do not output anything other than JSON.`
     }
 
     // "Play [song/artist]" — anything that starts with "play" + content
-    const playQueryMatch = normalized.match(/^(?:play|search for|find)\s+(.+)$/);
+    const playQueryMatch = normalized.match(/^(?:play|search for|find)(?:\s+(?:songs|something|music))?(?:\s+(?:by|from))?\s+(.+)$/);
     if (playQueryMatch) {
       const query = playQueryMatch[1];
       // Avoid treating mood requests as search queries

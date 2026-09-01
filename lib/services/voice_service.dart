@@ -18,6 +18,7 @@ class VoiceService {
 
   final stt.SpeechToText _stt = stt.SpeechToText();
   bool _initialized = false;
+  void Function()? _currentOnDone;
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
@@ -36,7 +37,14 @@ class VoiceService {
     // 2. Initialize the platform STT engine
     try {
       _initialized = await _stt.initialize(
-        onError: (error) => debugPrint('[VoiceService] STT error: ${error.errorMsg}'),
+        onError: (error) =>
+            debugPrint('[VoiceService] STT error: ${error.errorMsg}'),
+        onStatus: (status) {
+          debugPrint('[VoiceService] STT status: $status');
+          if (status == 'done' || status == 'notListening') {
+            _currentOnDone?.call();
+          }
+        },
         debugLogging: false,
       );
     } catch (e) {
@@ -66,6 +74,8 @@ class VoiceService {
 
     if (_stt.isListening) return false;
 
+    _currentOnDone = onDone;
+
     try {
       await _stt.listen(
         onResult: (result) {
@@ -73,11 +83,11 @@ class VoiceService {
         },
         listenOptions: stt.SpeechListenOptions(
           listenFor: const Duration(seconds: 15),
-          pauseFor: const Duration(milliseconds: 1000),
+          pauseFor: const Duration(milliseconds: 1500),
           cancelOnError: true,
           partialResults: true,
           onDevice: false,
-          listenMode: stt.ListenMode.dictation,
+          listenMode: stt.ListenMode.confirmation,
         ),
       );
       return true;

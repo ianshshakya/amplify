@@ -4,8 +4,7 @@ import '../models/track.dart';
 import '../models/voice_command.dart';
 import '../providers/player_provider.dart';
 import '../providers/recommendation_provider.dart';
-import '../providers/session_context_provider.dart';
-import '../providers/julu_provider.dart';
+
 import '../services/voice_service.dart';
 import '../services/voice_command_parser.dart';
 import '../services/music_service.dart';
@@ -79,11 +78,15 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           _handleFinalResult(text);
         }
       },
-      onDone: () {
+      onDone: () async {
         if (state.feedback == VoiceFeedback.listening) {
-          // STT ended without a final result (silence / timeout)
           if (recognized.isEmpty) {
-            _setError("Didn't hear anything — try again.");
+            // Wait a tiny bit just in case onResult is about to fire with the final text
+            await Future.delayed(const Duration(milliseconds: 500));
+            // If it's still listening, then it truly didn't hear anything
+            if (mounted && state.feedback == VoiceFeedback.listening) {
+              _setError("Didn't hear anything — try again.");
+            }
           } else {
             _handleFinalResult(recognized);
           }
@@ -99,13 +102,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   Future<void> stopListening() async {
     if (state.feedback != VoiceFeedback.listening) return;
     await _voiceService.stopListening();
-    
-    // Force immediate processing if we have text, otherwise show error.
-    if (state.recognizedText.isNotEmpty) {
-      _handleFinalResult(state.recognizedText);
-    } else {
-      _setError("Didn't hear anything — try again.");
-    }
+    // The state will be finalized by the onDone callback when the STT engine stops.
   }
 
   Future<void> toggleListening() async {
@@ -130,9 +127,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       feedbackMessage: 'Processing…',
       recognizedText: text,
     );
-
-    // Log the user's message to Julu's chat history
-    _ref.read(juluProvider.notifier).addUserMessage(text);
 
     // Get context so the parser can handle "something like this"
     final playerState = _ref.read(playerProvider);
@@ -168,7 +162,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         case VoiceIntent.stop:
           await player.togglePlayPause();
           _setSuccess('Stopped');
-          _ref.read(juluProvider.notifier).addJuluMessage('I have stopped the music.');
 
         case VoiceIntent.next:
           await player.playNext();
@@ -213,7 +206,6 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
             feedbackMessage: msg,
             lastCommand: command,
           );
-          _ref.read(juluProvider.notifier).addJuluMessage(msg);
 
         case VoiceIntent.searchAndPlay:
           final query = command.query ?? '';
@@ -252,8 +244,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
             if (aiTracks.isNotEmpty) {
               await player.playTrack(aiTracks.first, context: aiTracks);
               final msg = 'I found some great songs for you. Playing ${command.mood ?? "your playlist"} now!';
-              _setSuccess('Playing AI Curated Playlist');
-              _ref.read(juluProvider.notifier).addJuluMessage(msg);
+              _setSuccess(msg);
               return;
             }
           }
@@ -281,19 +272,16 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
               _setSuccess('Playing $query music');
             } else {
               _setError('Could not generate a playlist for that right now');
-              _ref.read(juluProvider.notifier).addJuluMessage('Sorry, I could not generate a playlist for that right now.');
             }
           }
 
         case VoiceIntent.chat:
           final response = command.chatResponse ?? command.explanation ?? "I'm not sure how to respond to that.";
           _setSuccess(response);
-          _ref.read(juluProvider.notifier).addJuluMessage(response);
 
         case VoiceIntent.unknown:
           final msg = command.explanation ?? 'Could not understand that';
           _setError(msg);
-          _ref.read(juluProvider.notifier).addJuluMessage(msg);
       }
     } catch (e) {
       debugPrint('[VoiceProvider] Command execution error: $e');
