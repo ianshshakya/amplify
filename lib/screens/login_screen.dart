@@ -72,6 +72,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _guestSignIn() {
+    ref.read(authProvider.notifier).loginAsGuest();
+    // Do not call loadUserData() for guests
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const RootShell()),
+      (route) => false,
+    );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -139,6 +148,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 icon: const Icon(Icons.g_mobiledata, size: 28),
                 label: const Text('Continue with Google'),
                 onPressed: _isSubmitting ? null : _googleSignIn,
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // ─── Guest / Offline Button ────────────────────────────────────
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const StadiumBorder(),
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                ),
+                icon: const Icon(Icons.offline_bolt, size: 24),
+                label: const Text('Continue as Guest (Offline)'),
+                onPressed: _isSubmitting ? null : _guestSignIn,
               ),
               
               const SizedBox(height: 16),

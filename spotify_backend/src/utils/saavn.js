@@ -69,7 +69,7 @@ function mapSaavnResult(data) {
   };
 }
 
-async function searchSaavn(query, limit = 20) {
+async function searchSaavn(query, limit = 20, targetArtist = null) {
   let allResults = [];
   let page = 1;
   const maxPerPage = 40;
@@ -93,14 +93,88 @@ async function searchSaavn(query, limit = 20) {
     allResults = allResults.slice(0, limit);
   }
   
-  // Sort results by play_count descending so original/famous songs appear first
+  const cleanQuery = query.toLowerCase().trim();
+  const cleanTargetArtist = targetArtist ? targetArtist.toLowerCase().trim() : null;
+
+  // Smart Ranking Algorithm
   const sortedResults = allResults.sort((a, b) => {
+    let scoreA = 0;
+    let scoreB = 0;
+
+    const titleA = decodeHTMLEntities(a.song || a.title || '').toLowerCase();
+    const titleB = decodeHTMLEntities(b.song || b.title || '').toLowerCase();
+    const artistA = decodeHTMLEntities(a.primary_artists || a.subtitle || '').toLowerCase();
+    const artistB = decodeHTMLEntities(b.primary_artists || b.subtitle || '').toLowerCase();
+
+    // 1. Exact Title Match Boost (+10000)
+    if (titleA === cleanQuery) scoreA += 10000;
+    if (titleB === cleanQuery) scoreB += 10000;
+
+    // 2. Target Artist Boost (+5000) - For "Song by Artist" NLP queries
+    if (cleanTargetArtist) {
+      if (artistA.includes(cleanTargetArtist)) scoreA += 5000;
+      if (artistB.includes(cleanTargetArtist)) scoreB += 5000;
+    }
+
+    // 3. Popularity (Play Count) Boost (fractional to keep within bounds)
     const playA = parseInt(String(a.play_count || '0').replace(/,/g, ''), 10) || 0;
     const playB = parseInt(String(b.play_count || '0').replace(/,/g, ''), 10) || 0;
-    return playB - playA;
+    
+    // Normalize play count to a 0-1000 scale assuming max playcount is around 1 billion
+    scoreA += (playA / 1000000); 
+    scoreB += (playB / 1000000);
+
+    return scoreB - scoreA; // Descending
   });
   
   return sortedResults.map(mapSaavnResult);
+}
+
+async function searchSaavnArtists(query, limit = 20) {
+  const url = `https://www.jiosaavn.com/api.php?__call=search.getArtistResults&q=${encodeURIComponent(query)}&n=${limit}&p=1&_format=json&_marker=0&ctx=web6dot0`;
+  const response = await fetch(url, { headers: saavnHeaders });
+  if (!response.ok) return [];
+  const data = await response.json();
+  if (!data.results || data.results.length === 0) return [];
+  
+  return data.results.map(a => {
+    let imageUrl = a.image || '';
+    if (imageUrl) imageUrl = imageUrl.replace('150x150', '500x500');
+    return {
+      id: a.id || a.url,
+      name: decodeHTMLEntities(a.title || a.name || 'Unknown Artist'),
+      imageUrl: imageUrl,
+      followerCount: a.description || '',
+      isVerified: Boolean(a.isVerified),
+      biography: '',
+      topSongs: [],
+      albums: [],
+      singles: [],
+      relatedArtists: []
+    };
+  });
+}
+
+async function searchSaavnAlbums(query, limit = 20) {
+  const url = `https://www.jiosaavn.com/api.php?__call=search.getAlbumResults&q=${encodeURIComponent(query)}&n=${limit}&p=1&_format=json&_marker=0&ctx=web6dot0`;
+  const response = await fetch(url, { headers: saavnHeaders });
+  if (!response.ok) return [];
+  const data = await response.json();
+  if (!data.results || data.results.length === 0) return [];
+
+  return data.results.map(a => {
+    let thumbnailUrl = a.image || '';
+    if (thumbnailUrl) thumbnailUrl = thumbnailUrl.replace('150x150', '500x500');
+    return {
+      id: a.id,
+      title: decodeHTMLEntities(a.title || 'Unknown Album'),
+      artistName: decodeHTMLEntities(a.subtitle || a.music || 'Unknown'),
+      year: a.year || '',
+      thumbnailUrl: thumbnailUrl,
+      totalDuration: '',
+      tracks: [] // Albums from search won't have full tracks list yet
+    };
+  });
 }
 
 async function searchSaavnPage(query, page = 1) {
@@ -410,10 +484,13 @@ module.exports = {
   searchSaavn,
   searchSaavnPage,
   searchSaavnWithFilters,
+  searchSaavnArtists,
+  searchSaavnAlbums,
   getStreamUrl,
   getSaavnStreamByMetadata,
   getPlaylistTracks,
   getRelatedTracks,
   getLyrics,
+  getAlbumDetails,
   fetchSpotifyPlaylistTracks
 };

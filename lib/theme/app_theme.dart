@@ -10,9 +10,10 @@ class AppColors {
   static const Color surfaceElevated = Color(0xFF333333);
 
   // Brand Accent (Spotify-like Green)
-  static const Color primary = Color(0xFF1DB954);
-  static const Color primaryDark = Color(0xFF158A3E);
-  static const Color primaryLight = Color(0xFF1ED760); // Brighter hover/active state
+  static const Color primary = Color.fromARGB(255, 22, 166, 161);
+  static const Color primaryDark = Color.fromARGB(255, 40, 178, 169);
+  static const Color primaryLight =
+      Color.fromARGB(255, 25, 209, 194); // Brighter hover/active state
 
   // Text
   static const Color textPrimary = Color(0xFFFFFFFF);
@@ -48,9 +49,12 @@ class AppTheme {
 
     final bg = isDark ? AppColors.background : AppColors.lightBackground;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
-    final surfaceH = isDark ? AppColors.surfaceHighlight : AppColors.lightSurfaceHighlight;
-    final textPrimary = isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+    final surfaceH =
+        isDark ? AppColors.surfaceHighlight : AppColors.lightSurfaceHighlight;
+    final textPrimary =
+        isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
+    final textSecondary =
+        isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
 
     return ThemeData(
       brightness: brightness,
@@ -70,20 +74,49 @@ class AppTheme {
       // Inter provides that clean, geometric, highly legible look
       textTheme: GoogleFonts.interTextTheme(
         TextTheme(
-          displayLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -1.0),
-          displayMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-          displaySmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-          headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 32, letterSpacing: -0.5),
-          headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 24, letterSpacing: -0.5),
-          headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 20, letterSpacing: -0.5),
-          titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
-          titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
-          titleSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w500, fontSize: 14),
-          bodyLarge: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w400),
-          bodyMedium: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w400),
-          bodySmall: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w400),
-          labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-          labelSmall: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
+          displayLarge: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.0),
+          displayMedium: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5),
+          displaySmall:
+              TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
+          headlineLarge: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 32,
+              letterSpacing: -0.5),
+          headlineMedium: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 24,
+              letterSpacing: -0.5),
+          headlineSmall: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              letterSpacing: -0.5),
+          titleLarge: TextStyle(
+              color: textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
+          titleMedium: TextStyle(
+              color: textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+          titleSmall: TextStyle(
+              color: textPrimary, fontWeight: FontWeight.w500, fontSize: 14),
+          bodyLarge: TextStyle(
+              color: textPrimary, fontSize: 16, fontWeight: FontWeight.w400),
+          bodyMedium: TextStyle(
+              color: textPrimary, fontSize: 14, fontWeight: FontWeight.w400),
+          bodySmall: TextStyle(
+              color: textSecondary, fontSize: 13, fontWeight: FontWeight.w400),
+          labelLarge: TextStyle(
+              color: textPrimary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5),
+          labelSmall: TextStyle(
+              color: textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -104,8 +137,10 @@ class AppTheme {
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
+        selectedLabelStyle:
+            GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
       ),
       cardTheme: CardThemeData(
         color: surface,
@@ -128,16 +163,20 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.5),
+          textStyle: GoogleFonts.inter(
+              fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.5),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
-          side: BorderSide(color: isDark ? const Color(0xFF727272) : Colors.black26, width: 1),
+          side: BorderSide(
+              color: isDark ? const Color(0xFF727272) : Colors.black26,
+              width: 1),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
+          textStyle:
+              GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -156,7 +195,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: surfaceH,
         selectedColor: AppColors.primary,
-        labelStyle: GoogleFonts.inter(fontSize: 13, color: textPrimary, fontWeight: FontWeight.w500),
+        labelStyle: GoogleFonts.inter(
+            fontSize: 13, color: textPrimary, fontWeight: FontWeight.w500),
         side: BorderSide.none,
         shape: const StadiumBorder(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

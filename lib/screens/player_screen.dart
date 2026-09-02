@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
 import 'search_screen.dart';
+import 'artist_screen.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -183,13 +184,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            track.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 16,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ArtistScreen(artistId: track.artist),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 16,
+                                decoration: TextDecoration.underline,
+                                decorationColor: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                           if (playerState.status == PlaybackStatus.error)

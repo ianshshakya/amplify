@@ -6,7 +6,7 @@ import '../services/api_client.dart';
 
 import 'package:google_sign_in/google_sign_in.dart';
 
-enum AuthStatus { checking, loggedOut, loggedIn }
+enum AuthStatus { checking, loggedOut, loggedIn, guest }
 
 @immutable
 class AuthState {
@@ -121,6 +121,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _authService.logout();
     state = const AuthState(status: AuthStatus.loggedOut);
+  }
+
+  void loginAsGuest() {
+    state = const AuthState(
+      status: AuthStatus.guest,
+    ).copyWith(user: AppUser(id: 'guest', name: 'Guest (Offline)', email: ''));
   }
 }
 

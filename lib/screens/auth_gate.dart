@@ -36,6 +36,7 @@ class _AuthGateState extends ConsumerState<AuthGate> {
       AuthStatus.checking => const Scaffold(backgroundColor: Colors.black),
       AuthStatus.loggedOut => const LoginScreen(),
       AuthStatus.loggedIn => _LoggedInShell(),
+      AuthStatus.guest => _LoggedInShell(),
     };
 
     return CinematicSplashOverlay(
@@ -56,7 +57,9 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(playlistProvider.notifier).loadUserData();
+      if (ref.read(authProvider).status != AuthStatus.guest) {
+        ref.read(playlistProvider.notifier).loadUserData();
+      }
       _checkForUpdate();
     });
   }

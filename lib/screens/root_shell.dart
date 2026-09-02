@@ -117,12 +117,17 @@ class _RootShellState extends State<RootShell> {
             currentIndex: _index,
             onTap: (i) => setState(() => _index = i),
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-              BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'),
-              BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'Julu'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.home_filled), label: 'Home'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.search), label: 'Search'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.library_music), label: 'Library'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.auto_awesome), label: 'Bingo'),
             ],
-            type: BottomNavigationBarType.fixed, // Ensure >3 items show correctly
+            type:
+                BottomNavigationBarType.fixed, // Ensure >3 items show correctly
           ),
         ],
       ),
@@ -153,14 +158,17 @@ class _SidebarItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              color:
+                  isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               size: 28,
             ),
             const SizedBox(width: 16),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
               ),

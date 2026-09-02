@@ -39,8 +39,22 @@ class MusicService {
 
   /// Search with a specific filter type
   Future<List<dynamic>> searchWithFilter(String query, String type) async {
-    // For now, we just pass to the backend search
-    return search(query);
+    try {
+      final results = await _api.get('/music/search?q=${Uri.encodeComponent(query)}&type=$type');
+      if (results is! List) return [];
+      
+      if (type == 'artists') {
+        return results.map((v) => ArtistSummary.fromJson(v as Map<String, dynamic>)).toList();
+      } else if (type == 'albums') {
+        return results.map((v) => Album.fromJson(v as Map<String, dynamic>)).toList();
+      } else {
+        final tracks = results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+        return Track.deduplicate(tracks);
+      }
+    } catch (e) {
+      debugPrint('Search error: $e');
+      return [];
+    }
   }
 
   // ─── Home feed ─────────────────────────────────────────────────────────────

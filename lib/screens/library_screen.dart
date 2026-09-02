@@ -113,10 +113,17 @@ class LibraryScreen extends ConsumerWidget {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.purple.shade700,
-                            borderRadius: BorderRadius.circular(4),
+                            gradient: const LinearGradient(
+                              colors: [Colors.deepPurpleAccent, Color(0xFF16A6A1)], // Premium teal/purple
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                            ],
                           ),
-                          child: const Icon(Icons.favorite, color: Colors.white),
+                          child: const Icon(Icons.favorite_rounded, color: Colors.white),
                         ),
                         title: const Text('Liked Songs'),
                         subtitle: Text(
@@ -132,10 +139,17 @@ class LibraryScreen extends ConsumerWidget {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.green.shade700,
-                            borderRadius: BorderRadius.circular(4),
+                            gradient: LinearGradient(
+                              colors: [Colors.cyan.shade400, Colors.blue.shade600],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                            ],
                           ),
-                          child: const Icon(Icons.download, color: Colors.white),
+                          child: const Icon(Icons.download_rounded, color: Colors.white),
                         ),
                         title: const Text('My Downloads'),
                         subtitle: const Text(

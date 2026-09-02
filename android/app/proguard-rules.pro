@@ -6,12 +6,15 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 
-# Audio Service & Just Audio Background
--keep class com.ryanheise.audioservice.** { *; }
+# Just Audio Background
+-keepclasseswithmembers class * {
+    @androidx.annotation.Keep <fields>;
+}
+-keepclasseswithmembers class * {
+    @androidx.annotation.Keep <methods>;
+}
+-keep class androidx.media3.session.** { *; }
+-keep class androidx.media3.extractor.** { *; }
 -keep class com.ryanheise.just_audio_background.** { *; }
--keep class androidx.media.** { *; }
--keep class android.support.v4.media.** { *; }
-
-# Ignore missing Play Core classes referenced by Flutter's deferred components
--dontwarn com.google.android.play.core.**
--dontwarn io.flutter.embedding.engine.deferredcomponents.**
+-keep class com.ryanheise.audio_session.** { *; }
+-keep class com.ryanheise.audio_service.** { *; }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/player_provider.dart';
 import '../theme/app_theme.dart';
 import '../screens/player_screen.dart';
+import '../screens/artist_screen.dart';
 
 /// The thin bar pinned above the bottom nav. Mirrors Spotify's mini player:
 /// - Tapping opens the full PlayerScreen with a Hero art transition
@@ -101,13 +102,24 @@ class MiniPlayer extends ConsumerWidget {
                               fontSize: 13,
                             ),
                           ),
-                          Text(
-                            track.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ArtistScreen(artistId: track.artist),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                                decoration: TextDecoration.underline,
+                                decorationColor: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                         ],

@@ -7,6 +7,7 @@ import '../providers/playlist_provider.dart';
 import '../providers/download_provider.dart';
 import '../theme/app_theme.dart';
 import 'download_indicator.dart';
+import '../screens/artist_screen.dart';
 
 /// A single track row used throughout the app.
 /// Shows thumbnail, title, artist, and a three-dot context menu.
@@ -66,11 +67,25 @@ class TrackTile extends ConsumerWidget {
             ),
         ],
       ),
-      subtitle: Text(
-        track.artist,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+      subtitle: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ArtistScreen(artistId: track.artist),
+            ),
+          );
+        },
+        child: Text(
+          track.artist,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            decoration: TextDecoration.underline,
+            decorationColor: AppColors.textSecondary,
+          ),
+        ),
       ),
       trailing: _ContextMenu(
         track: track,

@@ -1,5 +1,5 @@
 const express = require('express');
-const { searchSaavn, searchSaavnPage, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics } = require('../utils/saavn');
+const { searchSaavn, searchSaavnPage, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics, searchSaavnArtists, searchSaavnAlbums } = require('../utils/saavn');
 const { normalizeTracks, deduplicateTracks } = require('../services/AmplifyNormalizer');
 const CreatorSong = require('../models/CreatorSong');
 const { streamCache, metadataCache } = require('../utils/cache');
@@ -25,10 +25,25 @@ router.get('/search', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: 'Missing search query' });
 
-    const cacheKey = `search_${query}`;
+    const type = req.query.type || 'songs';
+    const cacheKey = `search_${type}_${query}`;
     const cachedResult = metadataCache.get(cacheKey);
     if (cachedResult) return res.json(cachedResult);
 
+    // Entity Routing (Artists & Albums)
+    if (type === 'artists') {
+      const artists = await searchSaavnArtists(query, 20);
+      metadataCache.set(cacheKey, artists);
+      return res.json(artists);
+    }
+    
+    if (type === 'albums') {
+      const albums = await searchSaavnAlbums(query, 20);
+      metadataCache.set(cacheKey, albums);
+      return res.json(albums);
+    }
+
+    // Default: Songs
     if (query === '_FETCH_GLOBAL_100_') {
       const creatorSongs = await CreatorSong.find().limit(100).sort({ createdAt: -1 }).lean();
       const result = creatorSongs.map(s => ({
@@ -42,10 +57,23 @@ router.get('/search', async (req, res) => {
       return res.json(result);
     }
 
-    const regex = new RegExp(query, 'i');
-    const creatorMatches = await CreatorSong.find({
-      $or: [{ title: regex }, { artist: regex }]
-    }).limit(10).lean();
+    // NLP Parsing for "Song by Artist"
+    let songQuery = query;
+    let targetArtist = null;
+    const byMatch = query.match(/(.+?)\s+by\s+(.+)/i);
+    if (byMatch) {
+      songQuery = byMatch[1].trim();
+      targetArtist = byMatch[2].trim();
+    }
+
+    const regex = new RegExp(songQuery, 'i');
+    let creatorQuery = { $or: [{ title: regex }, { artist: regex }] };
+    if (targetArtist) {
+      const artistRegex = new RegExp(targetArtist, 'i');
+      creatorQuery = { title: regex, artist: artistRegex };
+    }
+
+    const creatorMatches = await CreatorSong.find(creatorQuery).limit(10).lean();
 
     const formattedCreatorMatches = creatorMatches.map(s => ({
       videoId: s.videoId,
@@ -57,7 +85,7 @@ router.get('/search', async (req, res) => {
 
     let songs = [];
     try {
-      songs = await searchSaavn(query, 20);
+      songs = await searchSaavn(songQuery, 20, targetArtist);
     } catch (saavnError) {}
     
     const finalResult = [...formattedCreatorMatches, ...songs];
