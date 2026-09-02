@@ -92,6 +92,18 @@ class Track {
         trackNumber: (json['trackNumber'] as num?)?.toInt(),
       );
 
+  /// Filters out duplicate tracks that have the same title and artist
+  static List<Track> deduplicate(List<Track> tracks) {
+    final unique = <String, Track>{};
+    for (final t in tracks) {
+      final key = '${t.title.trim().toLowerCase()}_${t.artist.trim().toLowerCase()}';
+      if (!unique.containsKey(key)) {
+        unique[key] = t;
+      }
+    }
+    return unique.values.toList();
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) || (other is Track && other.videoId == videoId);

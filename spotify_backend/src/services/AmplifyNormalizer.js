@@ -80,6 +80,18 @@ function normalizePrimaryArtist(artistStr) {
 }
 
 /**
+ * Normalize all artists sorted alphabetically to handle flipped artist names
+ */
+function normalizeAllArtists(artistStr) {
+  if (!artistStr) return 'unknown artist';
+  return artistStr
+    .split(',')
+    .map(a => a.trim().replace(/\s+(ft\.|feat\.|featuring|x)\s+.*/i, '').toLowerCase())
+    .sort()
+    .join(', ');
+}
+
+/**
  * Normalize a song title for deduplication (strip remix tags, punctuation).
  */
 function normalizeTitle(title) {
@@ -133,6 +145,7 @@ function normalizeTrack(rawTrack) {
     primaryArtist: normalizePrimaryArtist(rawTrack.artist),
     normalizedTitle: normalizeTitle(rawTrack.title),
     normalizedArtist: normalizePrimaryArtist(rawTrack.artist).toLowerCase(),
+    normalizedAllArtists: normalizeAllArtists(rawTrack.artist),
 
     // ── Debug / scoring metadata ───────────────────────────────────────────
     _scoring: null, // Populated by ScoringEngine
@@ -147,25 +160,82 @@ function normalizeTracks(rawTracks) {
 }
 
 /**
+ * Levenshtein distance for fuzzy title matching
+ */
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+/**
  * Remove duplicate tracks from a list of AmplifyTracks.
  * Deduplication happens on:
  *   1. Exact videoId match
- *   2. Same normalized title + same primary artist (catches different recordings)
+ *   2. Same normalized title + same artist (or subset of sorted artists)
+ *   3. Fuzzy title match (Levenshtein distance) for typos
  */
 function deduplicateTracks(tracks) {
-  const seenIds = new Set();
-  const seenTitleArtist = new Set();
   const result = [];
 
   for (const track of tracks) {
-    if (seenIds.has(track.videoId)) continue;
+    if (result.some(r => r.videoId === track.videoId)) continue;
 
-    const key = `${track.normalizedTitle}::${track.normalizedArtist}`;
-    if (seenTitleArtist.has(key)) continue;
+    let isDuplicate = false;
+    for (const existing of result) {
+      const sameArtist = existing.normalizedAllArtists === track.normalizedAllArtists || 
+                         existing.normalizedArtist === track.normalizedArtist ||
+                         existing.normalizedAllArtists.includes(track.normalizedArtist);
 
-    seenIds.add(track.videoId);
-    seenTitleArtist.add(key);
-    result.push(track);
+      if (!sameArtist) continue;
+
+      if (existing.normalizedTitle === track.normalizedTitle) {
+        isDuplicate = true;
+        break;
+      }
+      
+      if (Math.abs(existing.normalizedTitle.length - track.normalizedTitle.length) > 5) continue;
+      
+      const len = Math.max(existing.normalizedTitle.length, track.normalizedTitle.length);
+      const threshold = len > 10 ? 3 : (len > 5 ? 2 : 1);
+      
+      const dist = levenshteinDistance(existing.normalizedTitle, track.normalizedTitle);
+      if (dist <= threshold) {
+        isDuplicate = true;
+        break;
+      }
+      
+      if (existing.normalizedTitle.includes(track.normalizedTitle) || track.normalizedTitle.includes(existing.normalizedTitle)) {
+        if (Math.abs(existing.normalizedTitle.length - track.normalizedTitle.length) <= 5) {
+          isDuplicate = true;
+          break;
+        }
+      }
+    }
+
+    if (!isDuplicate) {
+      result.push(track);
+    }
   }
 
   return result;

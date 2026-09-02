@@ -29,14 +29,8 @@ class MusicService {
       if (results is! List) return [];
       final tracks = results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
       
-      // Filter out duplicate tracks (by videoId)
-      final uniqueTracks = <String, Track>{};
-      for (final t in tracks) {
-        if (!uniqueTracks.containsKey(t.videoId)) {
-          uniqueTracks[t.videoId] = t;
-        }
-      }
-      return uniqueTracks.values.toList();
+      // Filter out duplicate tracks (by title and artist)
+      return Track.deduplicate(tracks);
     } catch (e) {
       debugPrint('Search error: $e');
       return [];
@@ -126,7 +120,9 @@ class MusicService {
     try {
       final result = await _api.get('/music/artist/${Uri.encodeComponent(artistId)}/songs?page=$page');
       if (result == null) return [];
-      return (result as List).map((json) => Track.fromJson(json as Map<String, dynamic>)).toList();
+      return Track.deduplicate((result as List)
+          .map((json) => Track.fromJson(json as Map<String, dynamic>))
+          .toList());
     } catch (e) {
       return [];
     }
@@ -367,7 +363,9 @@ class MusicService {
         },
       });
       if (results is! List) return [];
-      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+      return Track.deduplicate((results as List)
+          .map((v) => _trackFromJson(v as Map<String, dynamic>))
+          .toList());
     } catch (e) {
       debugPrint('getSimilarTracks error: $e');
       return [];

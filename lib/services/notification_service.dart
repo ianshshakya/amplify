@@ -43,10 +43,10 @@ class NotificationService {
     );
 
     await _notificationsPlugin.show(
-      888,
-      'Ask Bingo 🎙️',
-      'Tap to issue a voice command',
-      const NotificationDetails(android: androidDetails),
+      id: 888,
+      title: 'Ask Bingo 🎙️',
+      body: 'Tap to issue a voice command',
+      notificationDetails: const NotificationDetails(android: androidDetails),
       payload: 'bingo_voice',
     );
   }

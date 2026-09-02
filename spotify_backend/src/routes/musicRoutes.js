@@ -1,5 +1,6 @@
 const express = require('express');
 const { searchSaavn, searchSaavnPage, getStreamUrl, getPlaylistTracks, getRelatedTracks, getLyrics } = require('../utils/saavn');
+const { normalizeTracks, deduplicateTracks } = require('../services/AmplifyNormalizer');
 const CreatorSong = require('../models/CreatorSong');
 const { streamCache, metadataCache } = require('../utils/cache');
 const https = require('https');
@@ -167,14 +168,19 @@ router.get('/artist/:id', async (req, res) => {
     if (cachedResult) return res.json(cachedResult);
 
     const tracks = await searchSaavn(`${artistId} top songs`, 50);
+    
+    let normalized = normalizeTracks(tracks);
+    normalized = normalized.filter(t => !t.isRemix);
+    normalized = deduplicateTracks(normalized);
+
     const result = {
       id: artistId,
       name: artistId,
-      imageUrl: tracks.length > 0 ? tracks[0].thumbnailUrl : '',
+      imageUrl: normalized.length > 0 ? normalized[0].thumbnailUrl : '',
       followerCount: 'Unknown',
       isVerified: false,
       biography: '',
-      topSongs: tracks,
+      topSongs: normalized,
       albums: [],
       singles: [],
       relatedArtists: []
@@ -196,10 +202,14 @@ router.get('/artist/:id/songs', async (req, res) => {
     const cachedResult = metadataCache.get(cacheKey);
     if (cachedResult) return res.json(cachedResult);
 
-    const tracks = await searchSaavnPage(`${artistId} top songs`, page);
+    let tracks = await searchSaavnPage(`${artistId} top songs`, page);
     
-    metadataCache.set(cacheKey, tracks);
-    res.json(tracks);
+    let normalized = normalizeTracks(tracks);
+    normalized = normalized.filter(t => !t.isRemix);
+    normalized = deduplicateTracks(normalized);
+    
+    metadataCache.set(cacheKey, normalized);
+    res.json(normalized);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get artist songs' });
   }

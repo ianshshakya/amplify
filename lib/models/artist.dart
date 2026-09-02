@@ -32,9 +32,9 @@ class Artist {
       thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
       description: json['description'] as String? ?? '',
       subscribers: json['subscribers'] as String? ?? '',
-      topSongs: (json['topSongs'] as List<dynamic>? ?? [])
+      topSongs: Track.deduplicate((json['topSongs'] as List<dynamic>? ?? [])
           .map((t) => Track.fromJson(t as Map<String, dynamic>))
-          .toList(),
+          .toList()),
       albums: (json['albums'] as List<dynamic>? ?? [])
           .map((a) => Album.fromJson(a as Map<String, dynamic>))
           .toList(),
