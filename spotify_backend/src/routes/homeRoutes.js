@@ -111,6 +111,7 @@ const SongStatistic = require('../models/SongStatistic');
 
 const jwt = require('jsonwebtoken');
 const UserMusicProfile = require('../models/UserMusicProfile');
+const TasteEngine = require('../services/TasteEngine');
 
 router.get('/charts', async (req, res) => {
   try {
@@ -156,13 +157,15 @@ router.get('/charts', async (req, res) => {
           if (a.song && a.song.artist) {
             const aArtists = a.song.artist.split(',').map(ar => ar.trim());
             for (const ar of aArtists) {
-              if (artistAffinity[ar]) aScore *= (1 + artistAffinity[ar] * 2);
+              const safeAr = TasteEngine.sanitizeKey(ar);
+              if (artistAffinity[safeAr]) aScore *= (1 + artistAffinity[safeAr] * 2);
             }
           }
           if (b.song && b.song.artist) {
             const bArtists = b.song.artist.split(',').map(br => br.trim());
             for (const br of bArtists) {
-              if (artistAffinity[br]) bScore *= (1 + artistAffinity[br] * 2);
+              const safeBr = TasteEngine.sanitizeKey(br);
+              if (artistAffinity[safeBr]) bScore *= (1 + artistAffinity[safeBr] * 2);
             }
           }
           return bScore - aScore;

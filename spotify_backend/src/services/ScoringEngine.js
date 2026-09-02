@@ -19,6 +19,8 @@
  * can inspect why a specific song was ranked the way it was.
  */
 
+const TasteEngine = require('./TasteEngine');
+
 class ScoringEngine {
   /**
    * Score all candidates in a pool against the intent and user profile.
@@ -149,7 +151,8 @@ class ScoringEngine {
     let maxAffinity = 0;
 
     for (const a of artists) {
-      const aff = artistAffinityMap.get(a) || 0;
+      const safeArtist = TasteEngine.sanitizeKey(a);
+      const aff = artistAffinityMap.get(safeArtist) || 0;
       if (aff > maxAffinity) maxAffinity = aff;
     }
 

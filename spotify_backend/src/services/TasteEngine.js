@@ -76,7 +76,7 @@ class TasteEngine {
 
         // Artist Affinity
         if (song.artist) {
-          const artists = song.artist.split(',').map(a => a.trim());
+          const artists = song.artist.split(',').map(a => this.sanitizeKey(a.trim()));
           for (const a of artists) {
             artistScores[a] = (artistScores[a] || 0) + weight;
           }
@@ -243,6 +243,14 @@ class TasteEngine {
       normalized[key] = Math.round((scoreMap[key] / maxScore) * 100) / 100;
     }
     return normalized;
+  }
+
+  /**
+   * Mongoose Map keys cannot contain '.' or '$'
+   */
+  static sanitizeKey(key) {
+    if (!key) return 'Unknown';
+    return String(key).replace(/[\.\$]/g, '').trim() || 'Unknown';
   }
 }
 

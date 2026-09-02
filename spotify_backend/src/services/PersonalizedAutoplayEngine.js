@@ -75,7 +75,8 @@ class PersonalizedAutoplayEngine {
 
       // ── B. User Taste Affinity (0 - 40)
       let tasteScore = 0;
-      const aff = artistAffinity.get(trackArtist) || 0;
+      const safeTrackArtist = TasteEngine.sanitizeKey(trackArtist);
+      const aff = artistAffinity.get(safeTrackArtist) || 0;
       if (aff > 0) {
         tasteScore += (aff * 25);
         if (aff > 0.7) reasons.push(`You love ${trackArtist}`);
