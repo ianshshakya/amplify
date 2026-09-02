@@ -1,5 +1,6 @@
 const ListeningEvent = require('../models/ListeningEvent');
 const SongStatistic = require('../models/SongStatistic');
+const TasteEngine = require('./TasteEngine');
 
 // In-memory queues for batch processing
 const EVENT_QUEUE = [];
@@ -11,6 +12,17 @@ setInterval(async () => {
     const batch = EVENT_QUEUE.splice(0, EVENT_QUEUE.length);
     try {
       await ListeningEvent.insertMany(batch);
+      
+      // Extract unique userIds from the batch and trigger TasteEngine profile recalculation
+      const uniqueUserIds = [...new Set(batch.map(e => e.userId))];
+      for (const uid of uniqueUserIds) {
+        if (uid) {
+          // Fire and forget (don't block the interval)
+          TasteEngine.calculateUserProfile(uid).catch(err => {
+            console.error(`[AnalyticsService] Failed to calc profile for ${uid}:`, err.message);
+          });
+        }
+      }
     } catch (e) {
       console.error('[AnalyticsService] Batch insert ListeningEvent error:', e.message);
     }

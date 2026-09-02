@@ -203,7 +203,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ],
         dailyMixAsync.when(
           data: (dailyMix) {
-            if (dailyMix == null || dailyMix.tracks.isEmpty) return const SizedBox.shrink();
+            if (dailyMix == null || dailyMix.songs.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -211,9 +211,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
-                ...dailyMix.tracks.take(5).map((track) => TrackTile(
+                ...dailyMix.songs.take(5).map((track) => TrackTile(
                   track: track,
-                  context_: dailyMix.tracks,
+                  context_: dailyMix.songs,
                 )),
                 const Divider(color: Color(0xFF282828)),
               ],

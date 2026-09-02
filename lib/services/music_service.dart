@@ -103,6 +103,21 @@ class MusicService {
     try {
       final results = await _api.get('/home/moods');
       if (results is! List) return _fallbackMoodCategories();
+      
+      // If the backend returns a flat array of playlists, wrap it in a single MoodCategory
+      if (results.isNotEmpty && !results.first.containsKey('playlists')) {
+        return [
+          MoodCategory(
+            title: 'Moods & Genres',
+            playlists: results.map((c) => MoodPlaylist.fromJson({
+              'title': c['title'],
+              'playlistId': c['id'] ?? c['playlistId'],
+              'thumbnailUrl': c['thumbnailUrl'],
+            })).toList(),
+          )
+        ];
+      }
+
       return results
           .map((c) => MoodCategory.fromJson(c as Map<String, dynamic>))
           .toList();

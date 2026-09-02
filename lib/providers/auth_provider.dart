@@ -6,7 +6,7 @@ import '../services/api_client.dart';
 
 import 'package:google_sign_in/google_sign_in.dart';
 
-enum AuthStatus { checking, loggedOut, loggedIn, guest }
+enum AuthStatus { checking, loggedOut, loggedIn }
 
 @immutable
 class AuthState {
@@ -123,11 +123,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.loggedOut);
   }
 
-  void loginAsGuest() {
-    state = const AuthState(
-      status: AuthStatus.guest,
-    ).copyWith(user: AppUser(id: 'guest', name: 'Guest (Offline)', email: ''));
-  }
 }
 
 /// Global auth provider — available everywhere in the widget tree via ref.watch.

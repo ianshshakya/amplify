@@ -38,10 +38,13 @@ class AuthService {
       final res = await _api.get('/users/me');
       return AppUser.fromJson(res as Map<String, dynamic>);
     } catch (e) {
-      // Token is invalid/expired, OR the backend is unreachable (SocketException).
-      // Treat as logged out so the app doesn't freeze on the loading screen.
-      await _tokenStorage.clearToken();
-      return null;
+      // Only log the user out if the token is explicitly rejected (401/403).
+      if (e is ApiException && (e.statusCode == 401 || e.statusCode == 403)) {
+        await _tokenStorage.clearToken();
+        return null;
+      }
+      // Otherwise (e.g. network error / offline), keep them logged in!
+      return AppUser(id: 'offline', name: 'User (Offline)', email: '');
     }
   }
 

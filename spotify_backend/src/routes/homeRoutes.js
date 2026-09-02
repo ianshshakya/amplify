@@ -109,12 +109,68 @@ router.get('/playlist/:id', async (req, res) => {
 // ─── Charts / Trending ────────────────────────────────────────────────────────
 const SongStatistic = require('../models/SongStatistic');
 
+const jwt = require('jsonwebtoken');
+const UserMusicProfile = require('../models/UserMusicProfile');
+
 router.get('/charts', async (req, res) => {
   try {
-    const trendingStats = await SongStatistic.find()
-      .sort({ trendScore: -1, popularityScore: -1 })
-      .limit(20);
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const payload = jwt.verify(token, process.env.JWT_SECRET);
+        userId = payload.sub;
+      } catch (e) {
+        // ignore invalid token for optional auth
+      }
+    }
 
+    let trendingStats = await SongStatistic.find()
+      .sort({ trendScore: -1, popularityScore: -1 })
+      .limit(100);
+
+    // Apply personalization if user has a profile
+    if (userId) {
+      const profile = await UserMusicProfile.findOne({ userId });
+      if (profile) {
+        const langAffinity = profile.languageAffinity instanceof Map 
+          ? Object.fromEntries(profile.languageAffinity) 
+          : (profile.languageAffinity || {});
+          
+        const artistAffinity = profile.artistAffinity instanceof Map
+          ? Object.fromEntries(profile.artistAffinity)
+          : (profile.artistAffinity || {});
+
+        trendingStats.sort((a, b) => {
+          let aScore = a.trendScore + (a.popularityScore * 0.1);
+          let bScore = b.trendScore + (b.popularityScore * 0.1);
+
+          // Boost based on language
+          const aLang = a.song && a.song.language ? a.song.language : 'Unknown';
+          const bLang = b.song && b.song.language ? b.song.language : 'Unknown';
+          if (langAffinity[aLang]) aScore *= (1 + langAffinity[aLang]);
+          if (langAffinity[bLang]) bScore *= (1 + langAffinity[bLang]);
+
+          // Boost based on artist
+          if (a.song && a.song.artist) {
+            const aArtists = a.song.artist.split(',').map(ar => ar.trim());
+            for (const ar of aArtists) {
+              if (artistAffinity[ar]) aScore *= (1 + artistAffinity[ar] * 2);
+            }
+          }
+          if (b.song && b.song.artist) {
+            const bArtists = b.song.artist.split(',').map(br => br.trim());
+            for (const br of bArtists) {
+              if (artistAffinity[br]) bScore *= (1 + artistAffinity[br] * 2);
+            }
+          }
+          return bScore - aScore;
+        });
+      }
+    }
+
+    trendingStats = trendingStats.slice(0, 20);
     let songs = trendingStats.map(stat => stat.song).filter(s => s != null);
 
     if (songs.length < 15) {
@@ -145,12 +201,17 @@ router.get('/charts', async (req, res) => {
 router.get('/moods', (req, res) => {
   // Return mood playlists from curated config
   const moodPlaylists = CURATED_PLAYLISTS.filter(p => p.type === 'Moods');
-  res.json(moodPlaylists.map(p => ({
-    id: p.id,
-    title: p.title,
-    description: p.description,
-    thumbnailUrl: p.thumbnailUrl,
-  })));
+  res.json([
+    {
+      title: 'Moods & Genres',
+      playlists: moodPlaylists.map(p => ({
+        playlistId: p.id,
+        title: p.title,
+        description: p.description,
+        thumbnailUrl: p.thumbnailUrl,
+      }))
+    }
+  ]);
 });
 
 // ─── Mood Playlist: on-demand via PlaylistIntelligence ───────────────────────
