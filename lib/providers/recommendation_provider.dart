@@ -11,6 +11,7 @@ import '../services/api_client.dart';
 @immutable
 class SessionContext {
   final List<String> recentSongIds;
+  final List<Track> recentTracks;
   final List<String> recentArtists;
   /// Voice-set mood override (e.g. 'chill', 'energetic', 'happy'). Null = no override.
   final String? currentMood;
@@ -21,6 +22,7 @@ class SessionContext {
 
   const SessionContext({
     this.recentSongIds = const [],
+    this.recentTracks = const [],
     this.recentArtists = const [],
     this.currentMood,
     this.currentEnergy,
@@ -28,12 +30,15 @@ class SessionContext {
   });
 
   SessionContext addSong(Track track) {
-    final newIds = [...recentSongIds, track.videoId].take(10).toList();
+    final newIds = [track.videoId, ...recentSongIds.where((id) => id != track.videoId)].take(10).toList();
+    final newTracks = [track, ...recentTracks.where((t) => t.videoId != track.videoId)].take(10).toList();
+    
     final artistName = track.artist.split(',').first.trim();
     final newArtists = [...recentArtists];
     if (!newArtists.contains(artistName)) newArtists.insert(0, artistName);
     return SessionContext(
       recentSongIds: newIds,
+      recentTracks: newTracks,
       recentArtists: newArtists.take(5).toList(),
       currentMood: currentMood,
       currentEnergy: currentEnergy,
@@ -43,6 +48,7 @@ class SessionContext {
 
   SessionContext recordSkip() => SessionContext(
         recentSongIds: recentSongIds,
+        recentTracks: recentTracks,
         recentArtists: recentArtists,
         currentMood: currentMood,
         currentEnergy: currentEnergy,
@@ -51,6 +57,7 @@ class SessionContext {
 
   SessionContext withMoodOverride(String? mood, String? energy) => SessionContext(
         recentSongIds: recentSongIds,
+        recentTracks: recentTracks,
         recentArtists: recentArtists,
         currentMood: mood,
         currentEnergy: energy,

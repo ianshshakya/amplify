@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/search_provider.dart';
 import '../providers/home_provider.dart';
+import '../providers/recommendation_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/album_card.dart';
@@ -184,28 +185,56 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Widget _buildBrowseOrHistory(SearchState state, AsyncValue<List<dynamic>> moodsAsync) {
-    if (state.recentSearches.isNotEmpty) {
-      return ListView(
-        children: [
+    final sessionContext = ref.watch(sessionContextProvider);
+    final dailyMixAsync = ref.watch(dailyMixProvider);
+    
+    return ListView(
+      children: [
+        if (sessionContext.recentTracks.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('Recent Searches', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text('Recently Played', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
-          ...state.recentSearches.take(5).map((query) => ListTile(
-                leading: const Icon(Icons.history, color: AppColors.textSecondary),
-                title: Text(query, style: const TextStyle(color: AppColors.textPrimary)),
-                onTap: () {
-                  _controller.text = query;
-                  ref.read(searchProvider.notifier).onQueryChanged(query);
-                },
-              )),
+          ...sessionContext.recentTracks.take(5).map((track) => TrackTile(
+            track: track,
+            context_: sessionContext.recentTracks,
+          )),
           const Divider(color: Color(0xFF282828)),
-          _buildBrowseCategories(moodsAsync),
         ],
-      );
-    }
-
-    return _buildBrowseCategories(moodsAsync);
+        dailyMixAsync.when(
+          data: (dailyMix) {
+            if (dailyMix == null || dailyMix.tracks.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                ...dailyMix.tracks.take(5).map((track) => TrackTile(
+                  track: track,
+                  context_: dailyMix.tracks,
+                )),
+                const Divider(color: Color(0xFF282828)),
+              ],
+            );
+          },
+          loading: () => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text('Recommended for you', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              ...List.generate(3, (_) => SkeletonLoader.trackTile()),
+              const Divider(color: Color(0xFF282828)),
+            ],
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+        _buildBrowseCategories(moodsAsync),
+      ],
+    );
   }
 
   Widget _buildBrowseCategories(AsyncValue<List<dynamic>> moodsAsync) {

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../providers/home_provider.dart';
 import '../providers/player_provider.dart';
+import '../providers/library_provider.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/mini_player.dart';
@@ -99,6 +100,26 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                         style: const TextStyle(color: Color(0xFFB3B3B3)),
                       ),
                       const Spacer(),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final isSaved = ref.watch(libraryProvider).albums.any((a) => a.id == album.id);
+                          return IconButton(
+                            icon: Icon(
+                              isSaved ? Icons.favorite : Icons.favorite_border,
+                              color: isSaved ? const Color(0xFF1DB954) : Colors.white,
+                            ),
+                            onPressed: () {
+                              ref.read(libraryProvider.notifier).toggleAlbum(album);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(isSaved ? 'Removed from Library' : 'Added to Library'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                       ElevatedButton(
                         onPressed: () {
                           if (album.tracks.isNotEmpty) {

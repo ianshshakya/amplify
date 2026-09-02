@@ -75,11 +75,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isEnabled = prefs.getBool('hands_free_enabled') ?? false;
-    if (isEnabled) {
-      await enableHandsFree();
-    }
+    // Always enable hands-free (Bingo) on startup as requested
+    await enableHandsFree();
   }
 
   @override
@@ -135,6 +132,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       await enableHandsFree();
     }
   }
+
 
   Future<void> handleWakeWordDetected() async {
     if (state.feedback == VoiceAssistantState.listeningForCommand || 
@@ -231,6 +229,10 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       recognizedText: '',
       feedbackMessage: '',
     );
+    if (state.isHandsFreeEnabled) {
+      // We must tell the native side to resume listening for the wake word
+      _wakeWordService.start();
+    }
   }
 
   void _setError(String message) {

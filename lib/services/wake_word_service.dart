@@ -13,8 +13,12 @@ class WakeWordService {
   /// Subscribe to this stream to get notified when "Hey Bingo" is heard
   Stream<void> get wakeWordDetected {
     _wakeWordStream ??= _eventChannel.receiveBroadcastStream().where((event) {
-      if (event == "WAKE_WORD_DETECTED") return true;
+      if (event == "WAKE_WORD_DETECTED") {
+        _isRunning = false; // Native side automatically stopped
+        return true;
+      }
       if (event == "WAKE_WORD_ERROR") {
+        _isRunning = false;
         debugPrint("[WakeWordService] Error received from native.");
       }
       return false;
@@ -28,7 +32,7 @@ class WakeWordService {
 
   /// Start the background foreground service
   Future<bool> start() async {
-    if (_isRunning) return true;
+    // We always attempt to invoke the method to ensure native sync
 
     try {
       final success = await _methodChannel.invokeMethod<bool>('startService');

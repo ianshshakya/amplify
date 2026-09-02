@@ -144,20 +144,26 @@ class MusicService {
 
   // ─── Album ─────────────────────────────────────────────────────────────────
 
-  /// Fetch full album details using local search.
+  /// Fetch full album details using backend album endpoint.
   Future<Album?> getAlbum(String albumId) async {
     try {
-      final tracks = await search('$albumId full album');
+      final result = await _api.get('/music/album/$albumId');
+      if (result == null) return null;
+
+      final tracksData = result['tracks'] as List? ?? [];
+      final tracks = tracksData.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+
       return Album(
-        id: albumId,
-        title: albumId,
-        artistName: 'Unknown',
-        year: '',
-        thumbnailUrl: tracks.isNotEmpty ? tracks.first.thumbnailUrl : '',
+        id: result['id'] ?? albumId,
+        title: result['title'] ?? 'Unknown Album',
+        artistName: result['artistName'] ?? 'Unknown',
+        year: result['year'] ?? '',
+        thumbnailUrl: result['thumbnailUrl'] ?? (tracks.isNotEmpty ? tracks.first.thumbnailUrl : ''),
         totalDuration: Duration.zero,
         tracks: tracks,
       );
     } catch (e) {
+      debugPrint('getAlbum error: $e');
       return null;
     }
   }

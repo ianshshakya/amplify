@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/library_provider.dart';
 import '../theme/app_theme.dart';
 import 'liked_songs_screen.dart';
+import 'album_screen.dart';
 import 'playlist_screen.dart';
 import 'downloaded_songs_screen.dart';
 import 'auth_gate.dart';
@@ -71,8 +73,10 @@ class LibraryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlistState = ref.watch(playlistProvider);
+    final libraryState = ref.watch(libraryProvider);
     final authState = ref.watch(authProvider);
     final playlists = playlistState.playlists;
+    final savedAlbums = libraryState.albums;
 
     return SafeArea(
       child: Column(
@@ -179,6 +183,39 @@ class LibraryScreen extends ConsumerWidget {
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => PlaylistScreen(playlistId: playlist.id),
+                            ),
+                          ),
+                        ),
+                      if (savedAlbums.isNotEmpty)
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                          child: Text('Saved Albums', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                        ),
+                      for (final album in savedAlbums)
+                        ListTile(
+                          leading: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceHighlight,
+                              borderRadius: BorderRadius.circular(4),
+                              image: album.thumbnailUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(album.thumbnailUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: album.thumbnailUrl.isEmpty ? const Icon(Icons.album, color: Colors.white) : null,
+                          ),
+                          title: Text(album.title),
+                          subtitle: Text(
+                            album.artistName,
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => AlbumScreen(albumId: album.id),
                             ),
                           ),
                         ),

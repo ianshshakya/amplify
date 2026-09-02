@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
 import 'ask_bingo_screen.dart';
+import '../widgets/bingo_overlay.dart';
 
 /// The responsive app shell.
 /// Adapts between Desktop (Sidebar + Bottom Player) and Mobile (Bottom Nav + Mini Player).
@@ -38,33 +39,38 @@ class _RootShellState extends State<RootShell> {
   }
 
   Widget _buildDesktopLayout() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                _buildSidebar(),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      bottomLeft: Radius.circular(8),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildSidebar(),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          bottomLeft: Radius.circular(8),
+                        ),
+                        child: Container(
+                          color: AppColors.surface,
+                          child: _screens[_index],
+                        ),
+                      ),
                     ),
-                    child: Container(
-                      color: AppColors.surface,
-                      child: _screens[_index],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // Desktop full-width mini-player (which acts as the persistent player)
+              const MiniPlayer(),
+            ],
           ),
-          // Desktop full-width mini-player (which acts as the persistent player)
-          const MiniPlayer(),
-        ],
-      ),
+        ),
+        const BingoOverlay(),
+      ],
     );
   }
 
@@ -106,31 +112,36 @@ class _RootShellState extends State<RootShell> {
   }
 
   Widget _buildMobileLayout() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: _screens[_index],
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const MiniPlayer(),
-          BottomNavigationBar(
-            currentIndex: _index,
-            onTap: (i) => setState(() => _index = i),
-            items: const [
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.home_filled), label: 'Home'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.search), label: 'Search'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.library_music), label: 'Library'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.auto_awesome), label: 'Bingo'),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          body: _screens[_index],
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const MiniPlayer(),
+              BottomNavigationBar(
+                currentIndex: _index,
+                onTap: (i) => setState(() => _index = i),
+                items: const [
+                  BottomNavigationBarItem(
+                      icon: Icon(Icons.home_filled), label: 'Home'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Icons.search), label: 'Search'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Icons.library_music), label: 'Library'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Icons.auto_awesome), label: 'Bingo'),
+                ],
+                type:
+                    BottomNavigationBarType.fixed, // Ensure >3 items show correctly
+              ),
             ],
-            type:
-                BottomNavigationBarType.fixed, // Ensure >3 items show correctly
           ),
-        ],
-      ),
+        ),
+        const BingoOverlay(),
+      ],
     );
   }
 }
