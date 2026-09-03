@@ -215,8 +215,36 @@ class TrackMatcher {
    * Weighted similarity score (0-100).
    */
   static _computeScore(imported, candidate) {
-    const titleSim   = this._stringSimilarity(imported.title, candidate.title);
-    const artistSim  = this._stringSimilarity(imported.artist, candidate.artist);
+    let titleSim   = this._stringSimilarity(imported.title, candidate.title);
+    
+    // ── YouTube specific boosts ──
+    // YouTube titles contain extreme fluff (movie names, actors).
+    if (titleSim < 0.85 && imported.title) {
+      const rawTitleLower = imported.title.toLowerCase();
+      const candTitleLower = candidate.title.toLowerCase();
+      // If candidate title is exactly in the YouTube title
+      if (candTitleLower.length > 2 && rawTitleLower.includes(candTitleLower)) {
+        titleSim = Math.max(titleSim, 0.9);
+      }
+    }
+    
+    let artistSim  = this._stringSimilarity(imported.artist, candidate.artist);
+    // ── YouTube specific boost ──
+    // YouTube often puts the record label as the artist (e.g., T-Series, Sony Music)
+    // and puts the actual singers in the video title. If the candidate's artist is 
+    // found anywhere in the raw title, consider it a perfect artist match!
+    if (artistSim < 0.8 && imported.title) {
+      const rawTitleLower = imported.title.toLowerCase();
+      // Candidate artist can be comma-separated like "Pritam, Arijit Singh"
+      const candidateArtists = candidate.artist.split(',').map(a => a.trim().toLowerCase());
+      for (const ca of candidateArtists) {
+        if (ca && rawTitleLower.includes(ca)) {
+          artistSim = 0.9; // Huge boost since we found the singer in the title!
+          break;
+        }
+      }
+    }
+    
     const albumSim   = imported.album && candidate.album
       ? this._stringSimilarity(imported.album, candidate.album)
       : 0.5; // neutral if no album info
