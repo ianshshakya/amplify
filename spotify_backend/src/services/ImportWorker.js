@@ -106,7 +106,7 @@ class ImportWorker {
 
       cursor = nextCursor;
       await this._updateJob(job, {
-        'cursor.playlistCursor': cursor,
+        cursor: { ...(job.cursor || {}), playlistCursor: cursor },
         playlistsImported: Object.keys(playlistMap).length,
       });
 
