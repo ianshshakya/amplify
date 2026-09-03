@@ -130,20 +130,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(color: Color(0xFF282828)),
 
-          // Section: Connected Services / Import
-          ListTile(
-            leading: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A6A1)),
-            title: const Text('Bring Your Music', style: TextStyle(color: Colors.white)),
-            subtitle: Text(
-              'Import from Spotify or YouTube Music',
-              style: TextStyle(color: Color(0xFF535353), fontSize: 12),
-            ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const BringYourMusicScreen()),
-            ),
-          ),
-          const Divider(color: Color(0xFF282828)),
+
 
           // Section 5 - Account
           ListTile(

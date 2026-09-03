@@ -37,6 +37,71 @@ const YouTubeImporter = require('../services/importers/YouTubeImporter');
 const { encryptToken, decryptToken } = require('../utils/crypto');
 
 const router = express.Router();
+
+// ─── OAuth Callback (Unprotected - called by Google/Spotify redirect) ───────
+router.get('/oauth/:provider/callback', async (req, res) => {
+  const { provider } = req.params;
+  const { code, state, error } = req.query;
+
+  // Handle user cancellation
+  if (error) {
+    return res.redirect(`amplify://import?status=cancelled&provider=${provider}&error=${encodeURIComponent(error)}`);
+  }
+
+  const ImporterClass = getImporterClass(provider);
+  if (!ImporterClass) {
+    return res.status(400).json({ message: `Unknown provider: ${provider}` });
+  }
+
+  try {
+    // Decode and validate state
+    const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+    const userId = stateData.userId;
+
+    // Exchange code for tokens
+    const { accessToken, refreshToken, expiresIn, scope } = await ImporterClass.exchangeCode(code);
+
+    // Authenticate with the provider to get profile info
+    const importer = new ImporterClass(accessToken);
+    const profile = await importer.authenticate();
+
+    // Encrypt tokens before storing
+    const encryptedAccess  = encryptToken(accessToken);
+    const encryptedRefresh = refreshToken ? encryptToken(refreshToken) : undefined;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    // Upsert connected service
+    const user = await User.findById(userId);
+    const existingIdx = user.connectedServices.findIndex(s => s.provider === provider);
+
+    const serviceData = {
+      provider,
+      accessToken: encryptedAccess,
+      refreshToken: encryptedRefresh || user.connectedServices[existingIdx]?.refreshToken,
+      expiresAt,
+      scope,
+      providerUserId: profile.userId,
+      displayName: profile.displayName,
+      connectedAt: new Date(),
+    };
+
+    if (existingIdx >= 0) {
+      user.connectedServices[existingIdx] = serviceData;
+    } else {
+      user.connectedServices.push(serviceData);
+    }
+    await user.save();
+
+    // Redirect back to the app with a success deeplink
+    return res.redirect(`amplify://import?status=connected&provider=${provider}&displayName=${encodeURIComponent(profile.displayName)}`);
+
+  } catch (err) {
+    console.error(`[Import] OAuth callback error for ${provider}:`, err.message);
+    return res.redirect(`amplify://import?status=error&provider=${provider}&error=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// ─── Protected Routes Below ──────────────────────────────────────────────────
 router.use(requireAuth);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -123,67 +188,7 @@ router.get('/oauth/:provider', (req, res) => {
   res.json({ authUrl, state });
 });
 
-router.get('/oauth/:provider/callback', async (req, res) => {
-  const { provider } = req.params;
-  const { code, state, error } = req.query;
 
-  // Handle user cancellation
-  if (error) {
-    return res.redirect(`amplify://import?status=cancelled&provider=${provider}&error=${encodeURIComponent(error)}`);
-  }
-
-  const ImporterClass = getImporterClass(provider);
-  if (!ImporterClass) {
-    return res.status(400).json({ message: `Unknown provider: ${provider}` });
-  }
-
-  try {
-    // Decode and validate state
-    const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
-    const userId = stateData.userId;
-
-    // Exchange code for tokens
-    const { accessToken, refreshToken, expiresIn, scope } = await ImporterClass.exchangeCode(code);
-
-    // Authenticate with the provider to get profile info
-    const importer = new ImporterClass(accessToken);
-    const profile = await importer.authenticate();
-
-    // Encrypt tokens before storing
-    const encryptedAccess  = encryptToken(accessToken);
-    const encryptedRefresh = refreshToken ? encryptToken(refreshToken) : undefined;
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-    // Upsert connected service
-    const user = await User.findById(userId);
-    const existingIdx = user.connectedServices.findIndex(s => s.provider === provider);
-
-    const serviceData = {
-      provider,
-      accessToken: encryptedAccess,
-      refreshToken: encryptedRefresh || user.connectedServices[existingIdx]?.refreshToken,
-      expiresAt,
-      scope,
-      providerUserId: profile.userId,
-      displayName: profile.displayName,
-      connectedAt: new Date(),
-    };
-
-    if (existingIdx >= 0) {
-      user.connectedServices[existingIdx] = serviceData;
-    } else {
-      user.connectedServices.push(serviceData);
-    }
-    await user.save();
-
-    // Redirect back to the app with a success deeplink
-    return res.redirect(`amplify://import?status=connected&provider=${provider}&displayName=${encodeURIComponent(profile.displayName)}`);
-
-  } catch (err) {
-    console.error(`[Import] OAuth callback error for ${provider}:`, err.message);
-    return res.redirect(`amplify://import?status=error&provider=${provider}&error=${encodeURIComponent(err.message)}`);
-  }
-});
 
 // ─── Import Job Management ───────────────────────────────────────────────────
 

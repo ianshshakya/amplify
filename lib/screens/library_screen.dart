@@ -12,6 +12,7 @@ import 'auth_gate.dart';
 import 'artist_screen.dart';
 
 import 'settings_screen.dart';
+import 'import/bring_your_music_screen.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -164,6 +165,25 @@ class LibraryScreen extends ConsumerWidget {
                         ),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const DownloadedSongsScreen()),
+                        ),
+                      ),
+                      ListTile(
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF282828),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A6A1)),
+                        ),
+                        title: const Text('Bring Your Music'),
+                        subtitle: const Text(
+                          'Import from Spotify or YouTube Music',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const BringYourMusicScreen()),
                         ),
                       ),
                       for (final playlist in playlists)
