@@ -312,9 +312,34 @@ class ImportWorker {
         cursor = nextCursor;
       } while (cursor && libraryTracks.length < 5000); // safety limit
 
-      // Match library tracks
-      const { results } = await TrackMatcher.matchBatch(libraryTracks);
-      const matched = results.filter(r => r.matchStatus === 'MATCHED' && r.amplifyVideoId);
+      // We must add libraryTracks count to totalItems since we didn't know them in Phase 1
+      job.totalItems = (job.totalItems || 0) + libraryTracks.length;
+      await ImportJob.updateOne({ _id: job._id }, {
+        $inc: { totalItems: libraryTracks.length },
+      });
+
+      // Match library tracks in batches so UI progress updates
+      const matched = [];
+      
+      for (let i = 0; i < libraryTracks.length; i += BATCH_SIZE) {
+        if (await this._isCancelled(job._id)) return;
+        
+        const batch = libraryTracks.slice(i, i + BATCH_SIZE);
+        const { results } = await TrackMatcher.matchBatch(batch);
+        
+        const batchMatched = results.filter(r => r.matchStatus === 'MATCHED' && r.amplifyVideoId);
+        matched.push(...batchMatched);
+
+        // Update progress in the database so the frontend can see it
+        await ImportJob.updateOne({ _id: job._id }, {
+          $inc: {
+            processedItems: batch.length,
+            matchedItems: batchMatched.length,
+            reviewItems: results.filter(r => r.matchStatus === 'REVIEW_REQUIRED').length,
+            unavailableItems: results.filter(r => r.matchStatus === 'UNAVAILABLE').length,
+          }
+        });
+      }
 
       // Add matched tracks to user's Liked Songs (if not already there)
       const user = await User.findById(job.userId);
