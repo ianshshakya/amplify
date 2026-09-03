@@ -16,8 +16,8 @@
  *   < 60  → UNAVAILABLE
  */
 
-const MusicProvider = require('../MusicProvider');
-const { normalizeTracks } = require('../AmplifyNormalizer');
+const MusicProvider = require('./MusicProvider');
+const { normalizeTracks } = require('./AmplifyNormalizer');
 
 // ── Matching configuration ─────────────────────────────────────────────────
 // These are deliberately configurable rather than magic numbers in the code.
