@@ -39,7 +39,7 @@ const { encryptToken, decryptToken } = require('../utils/crypto');
 const router = express.Router();
 
 // ─── OAuth Callback (Unprotected - called by Google/Spotify redirect) ───────
-router.get('/oauth/:provider/callback', async (req, res) => {
+router.get('/:provider/callback', async (req, res) => {
   const { provider } = req.params;
   const { code, state, error } = req.query;
 
