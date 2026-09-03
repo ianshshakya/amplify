@@ -78,6 +78,7 @@ class TrackMatcher {
     
     if (source === 'youtube') {
       cleanTitle = cleanTitle
+        .split('|')[0] // Indian music videos use | to separate movie/actors
         .replace(/\(.*?(official|lyric|audio|video|music|visualizer).*?\)/gi, '')
         .replace(/\[.*?(official|lyric|audio|video|music|visualizer).*?\]/gi, '')
         .trim();
@@ -86,6 +87,9 @@ class TrackMatcher {
         .replace(/ - Topic/gi, '')
         .trim();
     }
+    
+    // Create a cleaned track for scoring so fuzzy match doesn't fail on fluff
+    const cleanImported = { ...importedTrack, title: cleanTitle || title, artist: cleanArtist || artist };
     
     const searchQuery = `${cleanTitle} ${cleanArtist}`.substring(0, 60).trim();
     const candidates = await MusicProvider.search(searchQuery, 10);
@@ -102,7 +106,7 @@ class TrackMatcher {
     // Score all candidates
     const scored = candidates.map(candidate => ({
       ...candidate,
-      score: this._computeScore(importedTrack, candidate),
+      score: this._computeScore(cleanImported, candidate),
     })).sort((a, b) => b.score - a.score);
 
     const best = scored[0];

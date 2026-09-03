@@ -436,12 +436,16 @@ class ImportWorker {
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   static _buildAmplifyTrack(importedTrack) {
+    // importedTrack could be a Mongoose document (from Phase 3) 
+    // OR a MatchResult wrapper (from Phase 4 library import)
+    const trackData = importedTrack.track || importedTrack;
+    
     return {
       videoId:      importedTrack.amplifyVideoId,
-      title:        importedTrack.title,
-      artist:       importedTrack.artist,
-      thumbnailUrl: importedTrack.thumbnailUrl || '',
-      durationMs:   importedTrack.durationMs || 0,
+      title:        trackData.title,
+      artist:       trackData.artist,
+      thumbnailUrl: trackData.thumbnailUrl || '',
+      durationMs:   trackData.durationMs || 0,
       source:       'saavn',
     };
   }
