@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_service/audio_service.dart';
+import 'services/audio_handler.dart';
 import 'providers/settings_provider.dart';
 import 'screens/auth_gate.dart';
 import 'screens/ask_bingo_screen.dart';
@@ -9,17 +10,19 @@ import 'providers/voice_provider.dart';
 import 'theme/app_theme.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+late AmplifyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enables audio to keep playing when the app is backgrounded and shows
-  // playback controls in the notification shade / lock screen.
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.example.spotify_clone.channel.audio',
-    androidNotificationChannelName: 'Music playback',
-    androidNotificationOngoing: true,
-    androidNotificationIcon: 'drawable/ic_notification',
+  audioHandler = await AudioService.init(
+    builder: () => AmplifyAudioHandler(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.example.spotify_clone.channel.audio',
+      androidNotificationChannelName: 'Music playback',
+      androidNotificationOngoing: true,
+      androidNotificationIcon: 'drawable/ic_notification',
+    ),
   );
 
   runApp(

@@ -2,13 +2,47 @@ const express = require('express');
 const MusicProvider = require('../services/MusicProvider');
 const PlaylistIntelligence = require('../services/PlaylistIntelligence');
 const DynamicPlaylist = require('../models/DynamicPlaylist');
+const UserMusicProfile = require('../models/UserMusicProfile');
 const CURATED_PLAYLISTS = require('../config/playlists');
+const optionalAuth = require('../middleware/optionalAuth');
 
 const router = express.Router();
 
 // Home: return playlist cards instantly (metadata only, no tracks)
-router.get('/', (req, res) => {
-  res.json(CURATED_PLAYLISTS.map(p => ({
+router.get('/', optionalAuth, async (req, res) => {
+  let feed = [...CURATED_PLAYLISTS];
+
+  if (req.userId) {
+    try {
+      const profile = await UserMusicProfile.findOne({ userId: req.userId });
+      if (profile && profile.artistAffinity && profile.artistAffinity.size > 0) {
+        // Convert Map to entries and sort by highest affinity
+        const topArtists = [...profile.artistAffinity.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(entry => entry[0])
+          .slice(0, 3); // Get top 3 artists
+
+        // Create dynamic playlist sections for the user's top artists
+        const dynamicPlaylists = topArtists.map(artist => ({
+          id: `dynamic_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
+          title: `More of ${artist}`,
+          type: 'Made For You',
+          strategy: 'artist',
+          searchQuery: artist,
+          description: `Because you listen to ${artist}`,
+          thumbnailUrl: 'https://c.saavncdn.com/840/Best-Of-Arijit-Singh-Collection-Of-Romantic-Songs-Hindi-2025-20251203161112-500x500.jpg', // We use a generic fallback since we don't have the artist image instantly
+          intent: { popularity: 'high', discovery: 'low' },
+        }));
+
+        // Inject them right after the "Made For You" (if exists) or at the top
+        feed = [...dynamicPlaylists, ...feed];
+      }
+    } catch (err) {
+      console.error('[HomeRoutes] Error building dynamic feed:', err.message);
+    }
+  }
+
+  res.json(feed.map(p => ({
     id: p.id,
     title: p.title,
     type: p.type,
@@ -20,19 +54,33 @@ router.get('/', (req, res) => {
 // ─── Playlist: return songs for a curated playlist ─────────────────────────────
 // Uses stale-while-revalidate from MongoDB, with PlaylistIntelligence as the
 // live generation engine when cache is cold or stale.
-router.get('/playlist/:id', async (req, res) => {
+router.get('/playlist/:id', optionalAuth, async (req, res) => {
   try {
-    const playlistConfig = CURATED_PLAYLISTS.find(p => p.id === req.params.id);
+    let playlistConfig = CURATED_PLAYLISTS.find(p => p.id === req.params.id);
+    
+    // Fallback for dynamic user-specific playlists
+    if (!playlistConfig && req.params.id.startsWith('dynamic_artist_')) {
+      const artist = req.params.id.replace('dynamic_artist_', '').replace(/_/g, ' ');
+      playlistConfig = {
+        id: req.params.id,
+        title: `More of ${artist}`,
+        strategy: 'artist',
+        searchQuery: artist,
+        intent: { popularity: 'high', discovery: 'low' },
+      };
+    }
+
     if (!playlistConfig) return res.status(404).json({ error: 'Playlist not found' });
 
     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    // Since dynamic playlists are unique to the artist, not the user, we can safely cache them!
     let dbPlaylist = await DynamicPlaylist.findOne({ playlistId: playlistConfig.id });
 
     // Background refresh function using PlaylistIntelligence
     const refreshInBackground = async () => {
       try {
-        console.log(`[HomeRoutes] Background refresh: ${playlistConfig.id}`);
-        const result = await PlaylistIntelligence.generate(playlistConfig, null, {
+        console.log(`[HomeRoutes] Background refresh: ${playlistConfig.id} for user ${req.userId || 'anon'}`);
+        const result = await PlaylistIntelligence.generate(playlistConfig, req.userId, {
           targetCount: 100,
           forceRefresh: true,
         });

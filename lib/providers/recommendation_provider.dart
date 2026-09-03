@@ -110,6 +110,17 @@ final dailyMixProvider = FutureProvider.autoDispose<CuratedPlaylistData?>((ref) 
   }
 });
 
+// ─── Recent Tracks ────────────────────────────────────────────────────────────
+
+final recentTracksProvider = FutureProvider.autoDispose<List<Track>>((ref) async {
+  try {
+    return await MusicService().getRecentTracks();
+  } catch (e) {
+    debugPrint('recentTracksProvider error: $e');
+    return [];
+  }
+});
+
 // ─── One Song Away ────────────────────────────────────────────────────────────
 
 final oneSongAwayProvider = FutureProvider.autoDispose<Track?>((ref) async {

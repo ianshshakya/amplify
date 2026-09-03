@@ -30,6 +30,18 @@ const trackSchema = new mongoose.Schema(
     recencyScore: { type: Number, default: 0 },      // 0-100 (100=very recent)
     isRemix: { type: Boolean, default: false },
     genre: { type: String },                          // optional, for future use
+
+    // ── External ID mapping for import/matching ───────────────────────────────
+    // Allows cross-referencing tracks with external providers without using
+    // their IDs as Amplify's primary key.
+    externalIds: {
+      type: {
+        spotify: { type: String },  // Spotify track ID
+        youtube: { type: String },  // YouTube video ID
+        isrc:    { type: String },  // International Standard Recording Code
+      },
+      default: {},
+    },
   },
   { _id: false }
 );

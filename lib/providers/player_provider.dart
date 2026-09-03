@@ -7,7 +7,10 @@ import '../services/music_service.dart';
 import '../services/offline_service.dart';
 import '../services/user_data_service.dart';
 import '../services/api_client.dart';
+import '../services/audio_handler.dart';
 import 'recommendation_provider.dart' show sessionContextProvider;
+import 'playlist_provider.dart' show playlistProvider;
+import '../main.dart' show audioHandler;
 
 enum RepeatMode { off, all, one }
 enum PlaybackStatus { idle, loading, playing, paused, error }
@@ -64,7 +67,7 @@ class PlayerState {
 /// Uses Riverpod StateNotifier so any ConsumerWidget can listen to the player state.
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer _audioPlayer = audioHandler.player;
   final MusicService _musicService = MusicService();
   final UserDataService _userDataService = UserDataService();
   ConcatenatingAudioSource? _playlistSource;
@@ -79,6 +82,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   PlayerNotifier({Ref? ref}) : super(const PlayerState()) {
     _ref = ref;
+    
+    // Wire up the like callback
+    audioHandler.onLike = (track) {
+      _ref?.read(playlistProvider.notifier).toggleLiked(track);
+    };
+    
     _audioPlayer.playerStateStream.listen((audioState) {
       PlaybackStatus nextStatus = state.status;
       if (state.status != PlaybackStatus.error) {

@@ -9,6 +9,7 @@ import 'album_screen.dart';
 import 'playlist_screen.dart';
 import 'downloaded_songs_screen.dart';
 import 'auth_gate.dart';
+import 'artist_screen.dart';
 
 import 'settings_screen.dart';
 
@@ -77,6 +78,7 @@ class LibraryScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final playlists = playlistState.playlists;
     final savedAlbums = libraryState.albums;
+    final savedArtists = libraryState.artists;
 
     return SafeArea(
       child: Column(
@@ -216,6 +218,30 @@ class LibraryScreen extends ConsumerWidget {
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => AlbumScreen(albumId: album.id),
+                            ),
+                          ),
+                        ),
+                      if (savedArtists.isNotEmpty)
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                          child: Text('Following', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                        ),
+                      for (final artist in savedArtists)
+                        ListTile(
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundImage: artist.thumbnailUrl.isNotEmpty ? NetworkImage(artist.thumbnailUrl) : null,
+                            child: artist.thumbnailUrl.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+                            backgroundColor: AppColors.surfaceHighlight,
+                          ),
+                          title: Text(artist.name),
+                          subtitle: const Text(
+                            'Artist',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ArtistScreen(artistId: artist.id),
                             ),
                           ),
                         ),

@@ -259,6 +259,17 @@ class MusicService {
     }
   }
 
+  Future<List<Track>> getRecentTracks() async {
+    try {
+      final results = await _api.get('/analytics/recent');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Failed to fetch recent tracks: $e');
+      return [];
+    }
+  }
+
   // ─── Intelligent Recommendations ───────────────────────────────────────────
 
   Future<CuratedPlaylistData?> getDailyMix() async {

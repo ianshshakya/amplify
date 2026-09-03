@@ -30,6 +30,22 @@ const userSchema = new mongoose.Schema(
     // grows unbounded; it's what powers "recently played" and the
     // recommendation / reels feed later.
     watchHistory: { type: [watchHistoryEntrySchema], default: [] },
+
+    // ── Connected external services ──────────────────────────────────
+    // Tokens are encrypted at rest (AES-256 via crypto util).
+    connectedServices: {
+      type: [{
+        provider:      { type: String, required: true }, // 'spotify' | 'youtube'
+        accessToken:   { type: String, required: true }, // encrypted
+        refreshToken:  { type: String },                 // encrypted
+        expiresAt:     { type: Date },
+        scope:         { type: String },
+        providerUserId:{ type: String },
+        displayName:   { type: String },
+        connectedAt:   { type: Date, default: Date.now },
+      }],
+      default: [],
+    },
   },
   { timestamps: true }
 );

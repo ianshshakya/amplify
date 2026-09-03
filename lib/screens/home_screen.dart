@@ -41,11 +41,17 @@ class HomeScreen extends ConsumerWidget {
             top: -100,
             right: -100,
             child: Container(
-              width: 350,
-              height: 350,
+              width: 400,
+              height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.15),
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primary.withOpacity(0.15),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.2, 1.0],
+                ),
               ),
             ),
           ),
@@ -53,18 +59,18 @@ class HomeScreen extends ConsumerWidget {
             top: 300,
             left: -150,
             child: Container(
-              width: 400,
-              height: 400,
+              width: 500,
+              height: 500,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.deepPurpleAccent.withOpacity(0.15),
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.deepPurpleAccent.withOpacity(0.15),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.2, 1.0],
+                ),
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-              child: Container(color: Colors.transparent),
             ),
           ),
           
@@ -412,24 +418,15 @@ class _HeroDiscoveryCard extends ConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => ArtistScreen(artistId: track.artist)),
-                              );
-                            },
-                            child: Text(
-                              track.artist,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                                decorationColor: Colors.white.withOpacity(0.7),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          child: Text(
+                            track.artist,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
@@ -567,22 +564,13 @@ class _CarouselTrackCard extends ConsumerWidget {
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white),
                     ),
                     const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => ArtistScreen(artistId: track.artist)),
-                        );
-                      },
-                      child: Text(
-                        track.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 13,
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.white.withOpacity(0.7),
-                        ),
+                    Text(
+                      track.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -617,16 +605,14 @@ class _QuickPickCard extends StatelessWidget {
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Row(
-              children: [
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Row(
+            children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(12),
@@ -678,7 +664,6 @@ class _QuickPickCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -772,22 +757,13 @@ class _VerticalSongCard extends ConsumerWidget {
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
             ),
             const SizedBox(height: 4),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ArtistScreen(artistId: track.artist)),
-                );
-              },
-              child: Text(
-                track.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.white.withOpacity(0.6),
-                ),
+            Text(
+              track.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 12,
               ),
             ),
           ],

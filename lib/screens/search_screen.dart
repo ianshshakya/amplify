@@ -185,22 +185,42 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Widget _buildBrowseOrHistory(SearchState state, AsyncValue<List<dynamic>> moodsAsync) {
-    final sessionContext = ref.watch(sessionContextProvider);
+    final recentTracksAsync = ref.watch(recentTracksProvider);
     final dailyMixAsync = ref.watch(dailyMixProvider);
     
     return ListView(
       children: [
-        if (sessionContext.recentTracks.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('Recently Played', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        recentTracksAsync.when(
+          data: (recentTracks) {
+            if (recentTracks.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text('Recently Played', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                ...recentTracks.take(4).map((track) => TrackTile(
+                  track: track,
+                  context_: recentTracks,
+                )),
+                const Divider(color: Color(0xFF282828)),
+              ],
+            );
+          },
+          loading: () => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text('Recently Played', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              ...List.generate(2, (_) => SkeletonLoader.trackTile()),
+              const Divider(color: Color(0xFF282828)),
+            ],
           ),
-          ...sessionContext.recentTracks.take(5).map((track) => TrackTile(
-            track: track,
-            context_: sessionContext.recentTracks,
-          )),
-          const Divider(color: Color(0xFF282828)),
-        ],
+          error: (_, __) => const SizedBox.shrink(),
+        ),
         dailyMixAsync.when(
           data: (dailyMix) {
             if (dailyMix == null || dailyMix.songs.isEmpty) return const SizedBox.shrink();

@@ -74,7 +74,7 @@ class AnalyticsService {
    */
   static async processEvent(eventData, userId) {
     try {
-      const { song, eventType, durationPlayedMs, completionPercent, context, sessionId } = eventData;
+      const { song, eventType, durationPlayedMs, completionPercent, context, sessionId, sourceType } = eventData;
       
       if (!song || !song.videoId || !eventType) {
         throw new Error('Invalid event data: song and eventType are required.');
@@ -90,6 +90,7 @@ class AnalyticsService {
         completionPercent: completionPercent || 0,
         context,
         sessionId,
+        sourceType: sourceType || 'native_amplify',
         createdAt: new Date()
       });
 

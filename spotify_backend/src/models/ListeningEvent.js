@@ -36,6 +36,16 @@ const listeningEventSchema = new mongoose.Schema({
   context: { 
     type: String 
   }, // e.g. 'home_trending', 'search', 'radio'
+
+  // Source of this event — used by TasteEngine to weight imported history
+  // less heavily than actual Amplify listening activity.
+  sourceType: {
+    type: String,
+    enum: ['native_amplify', 'spotify_import', 'youtube_import'],
+    default: 'native_amplify',
+    index: true,
+  },
+
   createdAt: { 
     type: Date, 
     default: Date.now, 

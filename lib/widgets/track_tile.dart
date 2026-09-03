@@ -67,24 +67,13 @@ class TrackTile extends ConsumerWidget {
             ),
         ],
       ),
-      subtitle: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ArtistScreen(artistId: track.artist),
-            ),
-          );
-        },
-        child: Text(
-          track.artist,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            decoration: TextDecoration.underline,
-            decorationColor: AppColors.textSecondary,
-          ),
+      subtitle: Text(
+        track.artist,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
         ),
       ),
       trailing: _ContextMenu(

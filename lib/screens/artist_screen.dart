@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../providers/home_provider.dart';
+import '../providers/library_provider.dart';
 import '../providers/artist_songs_provider.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/album_card.dart';
@@ -71,9 +72,19 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: artist.thumbnailUrl,
-                        fit: BoxFit.cover,
+                      Hero(
+                        tag: 'artist-art-${widget.artistId}',
+                        child: artist.thumbnailUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: artist.thumbnailUrl,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                color: const Color(0xFF282828),
+                                child: const Center(
+                                  child: Icon(Icons.person, size: 100, color: Colors.grey),
+                                ),
+                              ),
                       ),
                       Container(
                         decoration: const BoxDecoration(
@@ -107,23 +118,32 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFollowing ? const Color(0xFF1DB954) : Colors.transparent,
-                        side: _isFollowing ? null : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isFollowing = !_isFollowing;
-                        });
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final isSaved = ref.watch(libraryProvider).artists.any((a) => a.id == artist.id);
+                        return ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSaved ? const Color(0xFF1DB954) : Colors.transparent,
+                            side: isSaved ? null : const BorderSide(color: Colors.white),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            ref.read(libraryProvider.notifier).toggleArtist(artist);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isSaved ? 'Removed from Library' : 'Added to Library'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            isSaved ? 'Following' : 'Follow',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
                       },
-                      child: Text(
-                        _isFollowing ? 'Following' : 'Follow',
-                        style: const TextStyle(color: Colors.white),
-                      ),
                     ),
                   ),
                 ),

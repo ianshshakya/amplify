@@ -30,6 +30,16 @@ const EVENT_WEIGHTS = {
   ADD_TO_PLAYLIST: 6.0, // Extremely strong positive
 };
 
+// Source type multipliers — imported history contributes to taste profiles
+// but is deliberately weighted less than actual Amplify listening.
+// This prevents imported history from permanently dominating recommendations.
+// As the user listens natively in Amplify, organic listening takes over.
+const SOURCE_WEIGHTS = {
+  native_amplify:  1.0,   // Full weight for real Amplify listening
+  spotify_import:  0.6,   // Imported history (slightly lower trust)
+  youtube_import:  0.5,   // YouTube metadata is less structured than Spotify
+};
+
 class TasteEngine {
   /**
    * Recalculates the music profile for a specific user.
@@ -63,6 +73,10 @@ class TasteEngine {
 
       for (const event of events) {
         let baseWeight = this._getEventWeight(event);
+        
+        // Apply source type multiplier so imported history doesn't override real listening
+        const sourceMultiplier = SOURCE_WEIGHTS[event.sourceType] ?? SOURCE_WEIGHTS.native_amplify;
+        baseWeight = baseWeight * sourceMultiplier;
         
         // Apply time decay: more recent events have higher weight
         const eventAgeMs = Math.max(0, now - new Date(event.createdAt).getTime());

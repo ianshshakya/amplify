@@ -12,6 +12,7 @@ const homeRoutes = require('./routes/homeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const appRoutes = require('./routes/appRoutes');
+const importRoutes = require('./routes/importRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -41,6 +42,7 @@ app.use('/api/home', homeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/recommendations', apiLimiter, recommendationRoutes);
 app.use('/api/app', appRoutes);
+app.use('/api/import', importRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

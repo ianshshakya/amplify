@@ -102,24 +102,13 @@ class MiniPlayer extends ConsumerWidget {
                               fontSize: 13,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ArtistScreen(artistId: track.artist),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              track.artist,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                decoration: TextDecoration.underline,
-                                decorationColor: AppColors.textSecondary,
-                              ),
+                          Text(
+                            track.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
                             ),
                           ),
                         ],

@@ -23,13 +23,14 @@ class AppColors {
   // Accents & states
   static const Color error = Color(0xFFE91429);
   static const Color warning = Color(0xFFFFA42B);
-  static const Color heart = Color(0xFF1DB954); // Green for liked
+  static const Color heart =
+      Color.fromARGB(255, 34, 182, 193); // Green for liked
 
   // Light theme surfaces (if supported, though we focus on dark)
   static const Color lightBackground = Color(0xFFFFFFFF);
   static const Color lightSurface = Color(0xFFF6F6F6);
   static const Color lightSurfaceHighlight = Color(0xFFEBEBEB);
-  static const Color lightTextPrimary = Color(0xFF000000);
+  static const Color lightTextPrimary = Color.fromARGB(255, 0, 0, 0);
   static const Color lightTextSecondary = Color(0xFF535353);
 }
 
