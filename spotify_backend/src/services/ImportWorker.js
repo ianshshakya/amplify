@@ -18,8 +18,7 @@ const ImportedTrack = require('../models/ImportedTrack');
 const ListeningEvent = require('../models/ListeningEvent');
 const TasteEngine = require('./TasteEngine');
 const TrackMatcher = require('./TrackMatcher');
-
-const BATCH_SIZE = 50; // tracks per matching batch
+const BATCH_SIZE = 1; // tracks per matching batch
 
 class ImportWorker {
   /**

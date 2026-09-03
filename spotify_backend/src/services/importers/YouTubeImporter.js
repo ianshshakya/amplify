@@ -159,7 +159,7 @@ class YouTubeImporter extends MusicLibraryImporter {
     }
   }
 
-  async getPlaylistTracks(playlistId, cursor = null, limit = 50) {
+  async getPlaylistTracks(playlistId, cursor = null, limit = 50, onlyMusicCategory = false) {
     try {
       // Step 1: Get playlist items (video IDs + positions)
       const itemParams = {
@@ -193,26 +193,34 @@ class YouTubeImporter extends MusicLibraryImporter {
         videoMap[v.id] = v;
       }
 
-      const tracks = validItems.map((item, idx) => {
-        const videoId = item.snippet.resourceId.videoId;
-        const video = videoMap[videoId];
-        const durationMs = video ? this._parseIsoDuration(video.contentDetails?.duration) : null;
+      const tracks = validItems
+        .filter(item => {
+          if (!onlyMusicCategory) return true;
+          const videoId = item.snippet.resourceId.videoId;
+          const video = videoMap[videoId];
+          // YouTube categoryId 10 is 'Music'
+          return video?.snippet?.categoryId === '10';
+        })
+        .map((item, idx) => {
+          const videoId = item.snippet.resourceId.videoId;
+          const video = videoMap[videoId];
+          const durationMs = video ? this._parseIsoDuration(video.contentDetails?.duration) : null;
 
-        return {
-          sourceTrackId: videoId,
-          title:     item.snippet.title,
-          artist:    video?.snippet?.channelTitle || item.snippet.videoOwnerChannelTitle || 'Unknown',
-          artists:   [video?.snippet?.channelTitle || 'Unknown'],
-          album:     null, // YouTube doesn't expose album info via API
-          isrc:      null, // Not available through YouTube API
-          durationMs,
-          releaseDate: video?.snippet?.publishedAt,
-          thumbnailUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || '',
-          sourceUrl:  `https://www.youtube.com/watch?v=${videoId}`,
-          playlistIds: [playlistId],
-          position:   item.snippet.position || idx,
-        };
-      });
+          return {
+            sourceTrackId: videoId,
+            title:     item.snippet.title,
+            artist:    video?.snippet?.channelTitle || item.snippet.videoOwnerChannelTitle || 'Unknown',
+            artists:   [video?.snippet?.channelTitle || 'Unknown'],
+            album:     null, // YouTube doesn't expose album info via API
+            isrc:      null, // Not available through YouTube API
+            durationMs,
+            releaseDate: video?.snippet?.publishedAt,
+            thumbnailUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || '',
+            sourceUrl:  `https://www.youtube.com/watch?v=${videoId}`,
+            playlistIds: [playlistId],
+            position:   item.snippet.position || idx,
+          };
+        });
 
       return {
         tracks,
@@ -230,7 +238,8 @@ class YouTubeImporter extends MusicLibraryImporter {
    */
   async getLibrary(cursor = null, limit = 50) {
     // YouTube Music liked songs are in the "LL" (Liked Videos) playlist
-    return this.getPlaylistTracks('LL', cursor, limit);
+    // We pass `onlyMusicCategory = true` to strictly filter out standard non-music YouTube videos
+    return this.getPlaylistTracks('LL', cursor, limit, true);
   }
 
   /**
