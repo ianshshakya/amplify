@@ -49,7 +49,6 @@ class YouTubeImporter extends MusicLibraryImporter {
     this.accessToken = accessToken;
     this._api = axios.create({
       baseURL: YOUTUBE_API_BASE,
-      params: { key: process.env.GOOGLE_API_KEY },
       headers: { Authorization: `Bearer ${accessToken}` },
     });
   }
