@@ -158,7 +158,6 @@ router.get('/playlist/:id', optionalAuth, async (req, res) => {
 const SongStatistic = require('../models/SongStatistic');
 
 const jwt = require('jsonwebtoken');
-const UserMusicProfile = require('../models/UserMusicProfile');
 const TasteEngine = require('../services/TasteEngine');
 
 router.get('/charts', async (req, res) => {
