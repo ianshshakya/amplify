@@ -73,7 +73,21 @@ class TrackMatcher {
     }
 
     // ── Level 3 & 4: Search + fuzzy scoring ───────────────────────────────
-    const searchQuery = `${title} ${artist}`;
+    let cleanTitle = title || '';
+    let cleanArtist = artist || '';
+    
+    if (source === 'youtube') {
+      cleanTitle = cleanTitle
+        .replace(/\(.*?(official|lyric|audio|video|music|visualizer).*?\)/gi, '')
+        .replace(/\[.*?(official|lyric|audio|video|music|visualizer).*?\]/gi, '')
+        .trim();
+      cleanArtist = cleanArtist
+        .replace(/vevo/gi, '')
+        .replace(/ - Topic/gi, '')
+        .trim();
+    }
+    
+    const searchQuery = `${cleanTitle} ${cleanArtist}`.substring(0, 60).trim();
     const candidates = await MusicProvider.search(searchQuery, 10);
 
     if (!candidates || candidates.length === 0) {
