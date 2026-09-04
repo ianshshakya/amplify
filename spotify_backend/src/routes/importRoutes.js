@@ -97,7 +97,14 @@ router.get('/:provider/callback', async (req, res) => {
 
   } catch (err) {
     console.error(`[Import] OAuth callback error for ${provider}:`, err.message);
-    return res.redirect(`amplify://import?status=error&provider=${provider}&error=${encodeURIComponent(err.message)}`);
+    // TEMPORARY: Send error directly to browser so we can see it during debugging
+    return res.status(500).send(`
+      <h1>OAuth Error</h1>
+      <p><strong>Provider:</strong> ${provider}</p>
+      <p><strong>Error:</strong> ${err.message}</p>
+      <p><strong>Stack:</strong> ${err.stack}</p>
+      <p>Please screenshot this and send it back!</p>
+    `);
   }
 });
 
