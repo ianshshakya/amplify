@@ -300,6 +300,7 @@ class SpotifyImporter extends MusicLibraryImporter {
   _normalizeTrack(track, playlistId, position) {
     return {
       sourceTrackId: track.id,
+      source:    'spotify',
       title:     track.name,
       artist:    track.artists?.[0]?.name || 'Unknown',
       artists:   (track.artists || []).map(a => a.name),
