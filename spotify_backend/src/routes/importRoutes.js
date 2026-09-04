@@ -54,9 +54,12 @@ router.get('/:provider/callback', async (req, res) => {
   }
 
   try {
-    // Decode and validate state
-    const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+    // Decode and validate state (Express automatically URI decodes req.query)
+    const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     const userId = stateData.userId;
+    if (!userId) {
+      throw new Error('Invalid state token: missing userId');
+    }
 
     // Exchange code for tokens
     const { accessToken, refreshToken, expiresIn, scope } = await ImporterClass.exchangeCode(code);
@@ -72,6 +75,9 @@ router.get('/:provider/callback', async (req, res) => {
 
     // Upsert connected service
     const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
     const existingIdx = user.connectedServices.findIndex(s => s.provider === provider);
 
     const serviceData = {
@@ -97,14 +103,7 @@ router.get('/:provider/callback', async (req, res) => {
 
   } catch (err) {
     console.error(`[Import] OAuth callback error for ${provider}:`, err.message);
-    // TEMPORARY: Send error directly to browser so we can see it during debugging
-    return res.status(500).send(`
-      <h1>OAuth Error</h1>
-      <p><strong>Provider:</strong> ${provider}</p>
-      <p><strong>Error:</strong> ${err.message}</p>
-      <p><strong>Stack:</strong> ${err.stack}</p>
-      <p>Please screenshot this and send it back!</p>
-    `);
+    return res.redirect(`amplify://import?status=error&provider=${provider}&error=${encodeURIComponent(err.message)}`);
   }
 });
 
@@ -186,10 +185,12 @@ router.get('/oauth/:provider', (req, res) => {
   }
 
   // Generate CSRF state token: userId + random bytes
-  const state = Buffer.from(JSON.stringify({
+  // Use standard base64 and encodeURIComponent to ensure cross-compatibility
+  const stateObj = {
     userId: req.userId,
     nonce: crypto.randomBytes(16).toString('hex'),
-  })).toString('base64url');
+  };
+  const state = encodeURIComponent(Buffer.from(JSON.stringify(stateObj)).toString('base64'));
 
   const authUrl = ImporterClass.buildAuthUrl(state);
   res.json({ authUrl, state });
