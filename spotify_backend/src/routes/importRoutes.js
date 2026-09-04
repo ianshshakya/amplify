@@ -191,12 +191,12 @@ router.get('/oauth/:provider', (req, res) => {
   }
 
   // Generate CSRF state token: userId + random bytes
-  // Use standard base64 and encodeURIComponent to ensure cross-compatibility
+  // Use standard base64 (URLSearchParams in buildAuthUrl handles URI encoding)
   const stateObj = {
     userId: req.userId,
     nonce: crypto.randomBytes(16).toString('hex'),
   };
-  const state = encodeURIComponent(Buffer.from(JSON.stringify(stateObj)).toString('base64'));
+  const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
 
   const authUrl = ImporterClass.buildAuthUrl(state);
   res.json({ authUrl, state });
