@@ -78,7 +78,8 @@ class TrackMatcher {
     
     if (source === 'youtube') {
       cleanTitle = cleanTitle
-        .split('|')[0] // Indian music videos use | to separate movie/actors
+        .split('|')[0]            // strip everything after first pipe (cast/crew)
+        .replace(/\s*-\s+[^-]+$/, '') // strip trailing " - Movie Name" or " - Subtitle"
         .replace(/\(.*?(official|lyric|audio|video|music|visualizer).*?\)/gi, '')
         .replace(/\[.*?(official|lyric|audio|video|music|visualizer).*?\]/gi, '')
         .trim();
@@ -88,11 +89,29 @@ class TrackMatcher {
         .trim();
     }
     
-    // Create a cleaned track for scoring so fuzzy match doesn't fail on fluff
-    const cleanImported = { ...importedTrack, title: cleanTitle || title, artist: cleanArtist || artist };
+    // Create a cleaned track for scoring.
+    // rawTitle carries the original full YouTube title so the artist/title
+    // boost in _computeScore can still look up singer names inside it.
+    const cleanImported = {
+      ...importedTrack,
+      title:    cleanTitle || title,
+      artist:   cleanArtist || artist,
+      rawTitle: title,   // keep original for boost lookups
+    };
     
     const searchQuery = `${cleanTitle} ${cleanArtist}`.substring(0, 60).trim();
-    const candidates = await MusicProvider.search(searchQuery, 10);
+    let candidates = await MusicProvider.search(searchQuery, 10);
+
+    // ── Fallback search strategies if primary returns nothing ─────────────
+    if (!candidates || candidates.length === 0) {
+      // Try title-only (drop the noisy YouTube channel name as artist)
+      candidates = await MusicProvider.search(cleanTitle.substring(0, 50), 10);
+    }
+    if (!candidates || candidates.length === 0) {
+      // Last resort: just the first significant word of the title
+      const firstWord = cleanTitle.split(/\s+/).find(w => w.length > 3);
+      if (firstWord) candidates = await MusicProvider.search(firstWord, 10);
+    }
 
     if (!candidates || candidates.length === 0) {
       return {
@@ -219,8 +238,10 @@ class TrackMatcher {
     
     // ── YouTube specific boosts ──
     // YouTube titles contain extreme fluff (movie names, actors).
-    if (titleSim < 0.85 && imported.title) {
-      const rawTitleLower = imported.title.toLowerCase();
+    // Use rawTitle (the original full YouTube title) for boost lookups.
+    const lookupTitle = imported.rawTitle || imported.title;
+    if (titleSim < 0.85 && lookupTitle) {
+      const rawTitleLower = lookupTitle.toLowerCase();
       const candTitleLower = candidate.title.toLowerCase();
       // If candidate title is exactly in the YouTube title
       if (candTitleLower.length > 2 && rawTitleLower.includes(candTitleLower)) {
@@ -231,15 +252,14 @@ class TrackMatcher {
     let artistSim  = this._stringSimilarity(imported.artist, candidate.artist);
     // ── YouTube specific boost ──
     // YouTube often puts the record label as the artist (e.g., T-Series, Sony Music)
-    // and puts the actual singers in the video title. If the candidate's artist is 
-    // found anywhere in the raw title, consider it a perfect artist match!
-    if (artistSim < 0.8 && imported.title) {
-      const rawTitleLower = imported.title.toLowerCase();
+    // and puts the actual singers in the video title.
+    if (artistSim < 0.8 && lookupTitle) {
+      const rawTitleLower = lookupTitle.toLowerCase();
       // Candidate artist can be comma-separated like "Pritam, Arijit Singh"
       const candidateArtists = candidate.artist.split(',').map(a => a.trim().toLowerCase());
       for (const ca of candidateArtists) {
         if (ca && rawTitleLower.includes(ca)) {
-          artistSim = 0.9; // Huge boost since we found the singer in the title!
+          artistSim = 0.9; // Singer found in the original video title
           break;
         }
       }
