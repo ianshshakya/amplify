@@ -11,15 +11,15 @@ async function run() {
 
   const simulatedYouTubeTracks = [
     {
-      sourceTrackId: 'MJyKN-8UncM',
-      title: 'Shayad - Love Aaj Kal | Kartik | Sara | Arushi | Pritam | Arijit Singh',
-      artist: 'Sony Music India',
-      artists: ['Sony Music India'],
+      sourceTrackId: '2Vv-BfVoq4g',
+      title: 'Ed Sheeran - Perfect (Official Music Video)',
+      artist: 'Ed Sheeran',
+      artists: ['Ed Sheeran'],
       album: null,
       isrc: null,
-      durationMs: 247000,
+      durationMs: 279000,
       thumbnailUrl: '',
-      sourceUrl: 'https://www.youtube.com/watch?v=MJyKN-8UncM',
+      sourceUrl: 'https://www.youtube.com/watch?v=2Vv-BfVoq4g',
       playlistIds: ['LL'],
       source: 'youtube',
     }

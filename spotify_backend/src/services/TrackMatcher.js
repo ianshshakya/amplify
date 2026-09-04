@@ -33,7 +33,8 @@ const MATCH_CONFIG = {
     duration: 0.15,
   },
   // Max duration difference (ms) to be considered a potential match
-  maxDurationDiff: 8000,  // 8 seconds
+  // YouTube music videos often have 20-60s intros/outros/skits, so this needs to be generous
+  maxDurationDiff: 60000, 
   // Max candidates to return for the review screen
   maxReviewCandidates: 5,
 };
@@ -85,7 +86,7 @@ class TrackMatcher {
     if (source === 'youtube') {
       cleanTitle = cleanTitle
         .split('|')[0]            // strip everything after first pipe (cast/crew)
-        .replace(/\s*-\s+[^-]+$/, '') // strip trailing " - Movie Name" or " - Subtitle"
+        // Removed aggressive hyphen stripping which broke "Artist - Song" formats
         .replace(/\(.*?(official|lyric|audio|video|music|visualizer).*?\)/gi, '')
         .replace(/\[.*?(official|lyric|audio|video|music|visualizer).*?\]/gi, '')
         .trim();
@@ -93,6 +94,17 @@ class TrackMatcher {
         .replace(/vevo/gi, '')
         .replace(/ - Topic/gi, '')
         .trim();
+
+      // If title is "Artist - Song", smartly extract just the song
+      if (cleanTitle.includes('-')) {
+        const parts = cleanTitle.split('-');
+        const possibleArtist = parts[0].trim().toLowerCase();
+        const artistLower = cleanArtist.toLowerCase();
+        // If the part before the hyphen is the channel name or contains the artist name
+        if (possibleArtist.includes(artistLower) || artistLower.includes(possibleArtist) || possibleArtist.length < 3) {
+          cleanTitle = parts.slice(1).join('-').trim();
+        }
+      }
     }
     
     // Create a cleaned track for scoring.

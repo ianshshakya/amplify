@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../models/import_models.dart';
 import '../../services/import_service.dart';
 import '../../providers/import_provider.dart';
+import '../../providers/playlist_provider.dart';
 import '../library_screen.dart';
 import 'import_review_screen.dart';
 
@@ -153,6 +154,8 @@ class _ImportResultsScreenState extends ConsumerState<ImportResultsScreen>
                           color: AppColors.primary,
                           onTap: () {
                             ref.read(activeImportJobProvider.notifier).clear();
+                            // Refresh the user's library and playlists from backend
+                            ref.read(playlistProvider.notifier).loadUserData();
                             Navigator.of(context).popUntil((r) => r.isFirst);
                           },
                         ),
