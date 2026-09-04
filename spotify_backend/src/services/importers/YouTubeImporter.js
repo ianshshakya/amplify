@@ -309,7 +309,9 @@ class YouTubeImporter extends MusicLibraryImporter {
     if (!iso) return null;
     const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!match) return null;
-    const [, h = 0, m = 0, s = 0] = match.map(Number);
+    const h = parseInt(match[1] || '0', 10);
+    const m = parseInt(match[2] || '0', 10);
+    const s = parseInt(match[3] || '0', 10);
     return ((h * 3600) + (m * 60) + s) * 1000;
   }
 
