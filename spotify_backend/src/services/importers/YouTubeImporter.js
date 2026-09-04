@@ -208,6 +208,7 @@ class YouTubeImporter extends MusicLibraryImporter {
 
           return {
             sourceTrackId: videoId,
+            source:    'youtube',   // ← CRITICAL: tells TrackMatcher to apply YouTube-specific cleaning
             title:     item.snippet.title,
             artist:    video?.snippet?.channelTitle || item.snippet.videoOwnerChannelTitle || 'Unknown',
             artists:   [video?.snippet?.channelTitle || 'Unknown'],

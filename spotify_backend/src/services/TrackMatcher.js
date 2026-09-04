@@ -48,6 +48,12 @@ class TrackMatcher {
   static async match(importedTrack) {
     const { title, artist, album, isrc, durationMs, sourceTrackId, source } = importedTrack;
 
+    // ── Log the raw data coming in from the provider ──
+    console.log(`[TrackMatcher] ► RAW from ${source || 'unknown'}:`);
+    console.log(`  title:  "${title}"`);
+    console.log(`  artist: "${artist}"`);
+    console.log(`  durationMs: ${durationMs}`);
+
     // ── Level 1: ISRC exact match ──────────────────────────────────────────
     if (isrc) {
       const isrcResult = await this._matchByIsrc(isrc);
@@ -98,19 +104,44 @@ class TrackMatcher {
       artist:   cleanArtist || artist,
       rawTitle: title,   // keep original for boost lookups
     };
+
+    // ── Log the cleaned format going into the search + scorer ──
+    console.log(`[TrackMatcher] ► CLEANED for search:`);
+    console.log(`  cleanTitle:  "${cleanImported.title}"`);
+    console.log(`  cleanArtist: "${cleanImported.artist}"`);
     
     const searchQuery = `${cleanTitle} ${cleanArtist}`.substring(0, 60).trim();
-    let candidates = await MusicProvider.search(searchQuery, 10);
+    console.log(`  searchQuery: "${searchQuery}"`);
+
+    // Wrap search in a timeout to prevent hanging on slow JioSaavn responses
+    const searchWithTimeout = (q, n) => Promise.race([
+      MusicProvider.search(q, n),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('search timeout')), 10000)),
+    ]).catch(err => {
+      console.warn(`[TrackMatcher] search("${q}") failed/timed out: ${err.message}`);
+      return [];
+    });
+
+    let candidates = await searchWithTimeout(searchQuery, 10);
 
     // ── Fallback search strategies if primary returns nothing ─────────────
     if (!candidates || candidates.length === 0) {
+      console.log(`[TrackMatcher] Primary search returned 0, trying title-only fallback...`);
       // Try title-only (drop the noisy YouTube channel name as artist)
-      candidates = await MusicProvider.search(cleanTitle.substring(0, 50), 10);
+      candidates = await searchWithTimeout(cleanTitle.substring(0, 50), 10);
     }
     if (!candidates || candidates.length === 0) {
       // Last resort: just the first significant word of the title
       const firstWord = cleanTitle.split(/\s+/).find(w => w.length > 3);
-      if (firstWord) candidates = await MusicProvider.search(firstWord, 10);
+      if (firstWord) {
+        console.log(`[TrackMatcher] Title-only returned 0, trying first-word fallback: "${firstWord}"...`);
+        candidates = await searchWithTimeout(firstWord, 10);
+      }
+    }
+
+    console.log(`[TrackMatcher] ► JioSaavn candidates: ${candidates?.length || 0}`);
+    if (candidates && candidates.length > 0) {
+      console.log(`  top: "${candidates[0].title}" by "${candidates[0].artist}"`);
     }
 
     if (!candidates || candidates.length === 0) {
@@ -139,6 +170,7 @@ class TrackMatcher {
     }));
 
     if (best.score >= MATCH_CONFIG.thresholds.autoMatch) {
+      console.log(`[TrackMatcher] ✅ MATCHED  score=${Math.round(best.score)}  → "${best.title}" by "${best.artist}"`);
       return {
         matchStatus: 'MATCHED',
         confidenceScore: Math.round(best.score),
