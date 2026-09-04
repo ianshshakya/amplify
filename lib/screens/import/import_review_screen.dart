@@ -333,23 +333,31 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
   );
 
   Widget _emptyState() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.check_circle_rounded, size: 64, color: AppColors.primary),
-        const SizedBox(height: 16),
-        const Text('All reviews complete!',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text('Great — your library is fully matched.',
-          style: TextStyle(color: AppColors.textSecondary)),
-        const SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Back to Library'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-        ),
-      ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_rounded, size: 64, color: AppColors.primary),
+          const SizedBox(height: 16),
+          const Text('No tracks to review!',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'All your imported tracks either matched automatically or could not be found in the catalog.',
+            style: TextStyle(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Back to Library'),
+          ),
+        ],
+      ),
     ),
   );
 

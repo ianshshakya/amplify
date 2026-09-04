@@ -48,22 +48,41 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
       if (authUrl == null) throw Exception('No auth URL received');
 
       final uri = Uri.parse(authUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        // After the browser returns, refresh connected services
-        await Future.delayed(const Duration(seconds: 1));
-        ref.invalidate(connectedServicesProvider);
-      } else {
-        throw Exception('Could not open browser');
+      if (!await canLaunchUrl(uri)) throw Exception('Could not open browser');
+
+      // Open the browser — user authorizes, Google redirects to our backend
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+      // Poll the backend every 2s until the service appears (max 90s)
+      final providerName = provider == 'youtube' ? 'YouTube Music' : 'Spotify';
+      bool connected = false;
+      for (int i = 0; i < 45; i++) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        try {
+          final services = await ImportService().getConnectedServices();
+          if (services.any((s) => (s as Map)['provider'] == provider)) {
+            connected = true;
+            break;
+          }
+        } catch (_) {}
       }
+
+      if (!mounted) return;
+      ref.invalidate(connectedServicesProvider);
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(connected
+            ? '$providerName connected successfully!'
+            : 'Connection timed out. Did you complete authorization in the browser?'),
+        backgroundColor: connected ? AppColors.primary : AppColors.warning,
+      ));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Connection failed: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Connection failed: $e'),
+          backgroundColor: AppColors.error,
+        ));
       }
     } finally {
       if (mounted) setState(() { _isConnecting = false; _connectingProvider = null; });

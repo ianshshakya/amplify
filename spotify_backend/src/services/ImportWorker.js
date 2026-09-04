@@ -311,49 +311,91 @@ class ImportWorker {
         cursor = nextCursor;
       } while (cursor && libraryTracks.length < 5000); // safety limit
 
-      // We must add libraryTracks count to totalItems since we didn't know them in Phase 1
-      job.totalItems = (job.totalItems || 0) + libraryTracks.length;
+      if (libraryTracks.length === 0) return;
+
+      console.log(`[ImportWorker] Library: ${libraryTracks.length} tracks to match`);
+
+      // Add library tracks to the total count
       await ImportJob.updateOne({ _id: job._id }, {
         $inc: { totalItems: libraryTracks.length },
       });
 
-      // Match library tracks in batches so UI progress updates
-      const matched = [];
-      
+      const source = job.provider.replace('_file', '');
+
       for (let i = 0; i < libraryTracks.length; i += BATCH_SIZE) {
         if (await this._isCancelled(job._id)) return;
-        
+
         const batch = libraryTracks.slice(i, i + BATCH_SIZE);
         const { results } = await TrackMatcher.matchBatch(batch);
-        
-        const batchMatched = results.filter(r => r.matchStatus === 'MATCHED' && r.amplifyVideoId);
-        matched.push(...batchMatched);
 
-        // Update progress in the database so the frontend can see it
+        // Upsert into ImportedTrack (same as playlist tracks) so review screen works
+        const ops = results.map(r => ({
+          updateOne: {
+            filter: {
+              importJobId: job._id,
+              source,
+              sourceTrackId: r.track.sourceTrackId,
+            },
+            update: {
+              $setOnInsert: {
+                importJobId: job._id,
+                userId: job.userId,
+                source,
+                sourceTrackId: r.track.sourceTrackId,
+                sourcePlaylistIds: ['__library__'], // mark as library track
+                title: r.track.title,
+                artist: r.track.artist,
+                artists: r.track.artists,
+                album: r.track.album,
+                isrc: r.track.isrc,
+                durationMs: r.track.durationMs,
+                thumbnailUrl: r.track.thumbnailUrl,
+                normalizedTitle: r.track.title?.toLowerCase().trim(),
+                normalizedArtist: r.track.artist?.toLowerCase().trim(),
+                createdAt: new Date(),
+              },
+              $set: {
+                matchStatus: r.matchStatus,
+                confidenceScore: r.confidenceScore,
+                amplifyVideoId: r.amplifyVideoId,
+                reviewCandidates: r.reviewCandidates,
+              },
+            },
+            upsert: true,
+          },
+        }));
+
+        if (ops.length > 0) await ImportedTrack.bulkWrite(ops);
+
+        const matched = results.filter(r => r.matchStatus === 'MATCHED').length;
+        const review  = results.filter(r => r.matchStatus === 'REVIEW_REQUIRED').length;
+        const unavail = results.filter(r => r.matchStatus === 'UNAVAILABLE').length;
+
         await ImportJob.updateOne({ _id: job._id }, {
           $inc: {
             processedItems: batch.length,
-            matchedItems: batchMatched.length,
-            reviewItems: results.filter(r => r.matchStatus === 'REVIEW_REQUIRED').length,
-            unavailableItems: results.filter(r => r.matchStatus === 'UNAVAILABLE').length,
-          }
+            matchedItems: matched,
+            reviewItems: review,
+            unavailableItems: unavail,
+          },
         });
-      }
 
-      // Add matched tracks to user's Liked Songs (if not already there)
-      const user = await User.findById(job.userId);
-      if (!user) return;
+        // Add MATCHED library tracks immediately to user's Liked Songs
+        const batchMatched = results.filter(r => r.matchStatus === 'MATCHED' && r.amplifyVideoId);
+        if (batchMatched.length > 0) {
+          const user = await User.findById(job.userId).select('likedSongs').lean();
+          const existingIds = new Set((user?.likedSongs || []).map(t => t.videoId));
+          const newLiked = batchMatched
+            .filter(r => !existingIds.has(r.amplifyVideoId))
+            .map(r => this._buildAmplifyTrack(r));
 
-      const existingLikedIds = new Set(user.likedSongs.map(t => t.videoId));
-      const newLiked = matched
-        .filter(r => !existingLikedIds.has(r.amplifyVideoId))
-        .map(r => this._buildAmplifyTrack(r));
-
-      if (newLiked.length > 0) {
-        await User.updateOne(
-          { _id: job.userId },
-          { $push: { likedSongs: { $each: newLiked } } }
-        );
+          if (newLiked.length > 0) {
+            await User.updateOne(
+              { _id: job.userId },
+              { $push: { likedSongs: { $each: newLiked } } }
+            );
+          }
+        }
       }
 
     } catch (err) {

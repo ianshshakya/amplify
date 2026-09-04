@@ -185,21 +185,40 @@ class YouTubeImporter extends MusicLibraryImporter {
       // Step 2: Batch-fetch video details for richer metadata (duration, channel)
       const videoIds = validItems.map(i => i.snippet.resourceId.videoId).join(',');
       const videoRes = await this._api.get('/videos', {
-        params: { part: 'snippet,contentDetails', id: videoIds },
+        params: { part: 'snippet,contentDetails,topicDetails', id: videoIds },
       });
 
       const videoMap = {};
-      for (const v of videoRes.data.items) {
-        videoMap[v.id] = v;
-      }
+      videoRes.data.items.forEach(v => { videoMap[v.id] = v; });
 
+      // ULTRA-STRICT MUSIC FILTER (Mimics TuneMyMusic's accuracy)
       const tracks = validItems
         .filter(item => {
-          if (!onlyMusicCategory) return true;
           const videoId = item.snippet.resourceId.videoId;
           const video = videoMap[videoId];
-          // YouTube categoryId 10 is 'Music'
-          return video?.snippet?.categoryId === '10';
+          if (!video) return false;
+          if (!onlyMusicCategory) return true;
+
+          const cat = video.snippet?.categoryId;
+          const channel = video.snippet?.channelTitle || '';
+          const title = video.snippet?.title?.toLowerCase() || '';
+          const topics = video.topicDetails?.topicCategories || [];
+
+          // 1. If it has an official Music topic tag from Google's Knowledge Graph, keep it
+          const hasMusicTopic = topics.some(url => url.includes('wikipedia.org/wiki/Music'));
+          if (hasMusicTopic) return true;
+
+          // 2. If it's an official Topic or VEVO channel, keep it
+          if (channel.endsWith(' - Topic') || channel.endsWith('VEVO')) return true;
+
+          // 3. Must be in the Music category (10)
+          if (cat !== '10') return false;
+
+          // 4. Even if it's in category 10, reject common fake-music tags (vlogs, tutorials, etc)
+          const junkKeywords = ['vlog', 'tutorial', 'how to', 'episode', 'gameplay', 'review', 'reaction'];
+          if (junkKeywords.some(kw => title.includes(kw))) return false;
+
+          return true;
         })
         .map((item, idx) => {
           const videoId = item.snippet.resourceId.videoId;
@@ -208,7 +227,7 @@ class YouTubeImporter extends MusicLibraryImporter {
 
           return {
             sourceTrackId: videoId,
-            source:    'youtube',   // ← CRITICAL: tells TrackMatcher to apply YouTube-specific cleaning
+            source:    'youtube',
             title:     item.snippet.title,
             artist:    video?.snippet?.channelTitle || item.snippet.videoOwnerChannelTitle || 'Unknown',
             artists:   [video?.snippet?.channelTitle || 'Unknown'],
