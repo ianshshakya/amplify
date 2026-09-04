@@ -55,7 +55,13 @@ router.get('/:provider/callback', async (req, res) => {
 
   try {
     // Decode and validate state (Express automatically URI decodes req.query)
-    const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+    const decodedStr = Buffer.from(state, 'base64').toString();
+    let stateData;
+    try {
+      stateData = JSON.parse(decodedStr);
+    } catch (parseErr) {
+      throw new Error(`JSON parse failed. Decoded string was: '${decodedStr}'. Original error: ${parseErr.message}`);
+    }
     const userId = stateData.userId;
     if (!userId) {
       throw new Error('Invalid state token: missing userId');
