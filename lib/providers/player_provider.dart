@@ -90,27 +90,28 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     
     _audioPlayer.playerStateStream.listen((audioState) {
       PlaybackStatus nextStatus = state.status;
-      if (state.status != PlaybackStatus.error) {
-        if (audioState.processingState == ProcessingState.completed) {
-          nextStatus = PlaybackStatus.paused;
-        } else if (audioState.playing && audioState.processingState == ProcessingState.ready) {
-          nextStatus = PlaybackStatus.playing;
-        } else if (audioState.playing && audioState.processingState == ProcessingState.buffering) {
-          // just_audio sometimes reports buffering even while audio is actively playing on Windows.
-          // We can assume if position > 0 and playing is true, we should show playing UI.
-          if (_audioPlayer.position.inMilliseconds > 0) {
-             nextStatus = PlaybackStatus.playing;
-          } else {
-             nextStatus = PlaybackStatus.loading;
-          }
-        } else if (audioState.processingState == ProcessingState.loading || audioState.processingState == ProcessingState.buffering) {
+      
+      if (audioState.processingState == ProcessingState.completed) {
+        nextStatus = PlaybackStatus.paused;
+      } else if (audioState.playing) {
+        // If it is playing but stuck in error state (e.g. from a quick retry), force it to playing.
+        if (audioState.processingState == ProcessingState.buffering && _audioPlayer.position.inMilliseconds == 0) {
           nextStatus = PlaybackStatus.loading;
-        } else if (!audioState.playing) {
+        } else {
+          nextStatus = PlaybackStatus.playing;
+        }
+      } else {
+        if (audioState.processingState == ProcessingState.loading || audioState.processingState == ProcessingState.buffering) {
+          nextStatus = PlaybackStatus.loading;
+        } else {
           nextStatus = PlaybackStatus.paused;
         }
       }
+
+      // If we are playing, explicitly wipe out any stale error message
+      final newErrorMessage = nextStatus == PlaybackStatus.playing ? null : state.errorMessage;
       
-      state = state.copyWith(status: nextStatus);
+      state = state.copyWith(status: nextStatus, errorMessage: newErrorMessage, clearError: nextStatus == PlaybackStatus.playing);
 
       // If we finished playing the entire concatenating source, check what to do
       if (audioState.processingState == ProcessingState.completed) {

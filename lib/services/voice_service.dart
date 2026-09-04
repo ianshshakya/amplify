@@ -83,7 +83,7 @@ class VoiceService {
         },
         listenOptions: stt.SpeechListenOptions(
           listenFor: const Duration(seconds: 15),
-          pauseFor: const Duration(milliseconds: 2000),
+          pauseFor: const Duration(milliseconds: 4000),
           cancelOnError: true,
           partialResults: true,
           onDevice: false,

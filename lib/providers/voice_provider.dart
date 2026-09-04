@@ -165,7 +165,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
     String recognized = '';
     _initialSilenceTimer?.cancel();
-    _initialSilenceTimer = Timer(const Duration(seconds: 5), () {
+    _initialSilenceTimer = Timer(const Duration(seconds: 10), () {
       if (mounted && state.feedback == VoiceAssistantState.listeningForCommand && state.recognizedText.isEmpty) {
         _voiceService.stopListening();
         _setError("Didn't hear anything — try again.");
