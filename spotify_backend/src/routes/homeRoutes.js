@@ -34,10 +34,10 @@ function scorePlaylistForUser(playlist, languageAffinity, artistAffinity) {
 
 // ─── Home: return personalized playlist cards (metadata only, no tracks) ─────
 router.get('/', optionalAuth, async (req, res) => {
-  let feed = [...CURATED_PLAYLISTS];
   let languageAffinity = {};
   let artistAffinity = {};
   let hasProfile = false;
+  let feed = [];
 
   if (req.userId) {
     try {
@@ -55,30 +55,116 @@ router.get('/', optionalAuth, async (req, res) => {
         hasProfile = hasLang || hasArtist;
 
         if (hasProfile) {
-          // Score every playlist and sort by relevance
-          feed = feed
-            .map(p => ({ ...p, _score: scorePlaylistForUser(p, languageAffinity, artistAffinity) }))
-            .sort((a, b) => b._score - a._score);
+          const topLanguages = Object.entries(languageAffinity)
+            .sort((a, b) => b[1] - a[1])
+            .map(e => e[0])
+            .slice(0, 3);
+          
+          const primaryLang = topLanguages[0] || 'English';
 
-          // Inject dynamic artist playlists for top 3 liked artists
           const topArtists = Object.entries(artistAffinity)
             .sort((a, b) => b[1] - a[1])
             .map(e => e[0].replace(/_/g, ' '))
-            .slice(0, 3);
+            .slice(0, 5);
 
-          const dynamicPlaylists = topArtists.map(artist => ({
-            id: `dynamic_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
-            title: `More of ${artist}`,
-            type: 'Made For You',
-            strategy: 'artist',
-            searchQuery: artist,
-            description: `Because you listen to ${artist}`,
+          // 1. Top Charts (Dynamic by Language)
+          for (const lang of topLanguages.slice(0, 2)) {
+            feed.push({
+              id: `top_charts_${lang.toLowerCase()}`,
+              title: `${lang} Top 50`,
+              type: 'Top Charts',
+              strategy: 'multi',
+              searchQuery: [`${lang} top 50`, `trending ${lang} songs`],
+              description: `The biggest ${lang} hits trending today.`,
+              thumbnailUrl: '',
+              intent: { languages: [lang], popularity: 'very-high', discovery: 'low' },
+            });
+          }
+          feed.push({
+             id: 'global100',
+             title: 'Global Top 100',
+             type: 'Top Charts',
+             strategy: 'spotify',
+             spotifyUrl: ['https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M'],
+             saavnPlaylistId: '103402903',
+             description: 'The most popular songs across the globe right now.',
+             thumbnailUrl: 'https://misc.scdn.co/liked-songs/liked-songs-640.png',
+             intent: { languages: ['English'], popularity: 'very-high', discovery: 'low', energy: 'medium' },
+          });
+
+          // 2. Trending Now
+          for (const lang of topLanguages.slice(0, 2)) {
+            feed.push({
+              id: `trending_${lang.toLowerCase()}`,
+              title: `Trending in ${lang}`,
+              type: 'Trending Now',
+              strategy: 'multi',
+              searchQuery: [`new viral ${lang} songs`, `trending ${lang}`],
+              description: `Viral and rising tracks in ${lang}.`,
+              thumbnailUrl: '',
+              intent: { languages: [lang], popularity: 'high', discovery: 'medium' },
+            });
+          }
+
+          // 3. Artist Spotlights
+          for (const artist of topArtists) {
+            feed.push({
+              id: `dynamic_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
+              title: `Best of ${artist}`,
+              type: 'Artist Spotlights',
+              strategy: 'artist',
+              searchQuery: artist,
+              description: `Essential hits by ${artist}.`,
+              thumbnailUrl: '',
+              intent: { popularity: 'high', discovery: 'low' },
+            });
+          }
+
+          // 4. Moods & Genres
+          const moodOptions = ['Chill', 'Workout', 'Party', 'Romance', 'Sad'];
+          // Deterministic shuffle based on user ID to keep moods consistent for a while
+          const hash = req.userId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+          const mood1 = moodOptions[hash % moodOptions.length];
+          const mood2 = moodOptions[(hash + 1) % moodOptions.length];
+
+          feed.push({
+            id: `mood_${mood1.toLowerCase()}_${primaryLang.toLowerCase()}`,
+            title: `${primaryLang} ${mood1}`,
+            type: 'Moods & Genres',
+            strategy: 'multi',
+            searchQuery: [`${primaryLang} ${mood1} songs`, `best ${primaryLang} ${mood1}`],
+            description: `Perfect ${mood1.toLowerCase()} vibes in ${primaryLang}.`,
             thumbnailUrl: '',
-            intent: { popularity: 'high', discovery: 'low' },
-            _score: 100, // Always inject these at top
-          }));
+            intent: { languages: [primaryLang], popularity: 'high', discovery: 'medium' },
+          });
+          
+          if (topLanguages.length > 1) {
+            const secLang = topLanguages[1];
+            feed.push({
+              id: `mood_${mood2.toLowerCase()}_${secLang.toLowerCase()}`,
+              title: `${secLang} ${mood2}`,
+              type: 'Moods & Genres',
+              strategy: 'multi',
+              searchQuery: [`${secLang} ${mood2} songs`],
+              description: `Perfect ${mood2.toLowerCase()} vibes in ${secLang}.`,
+              thumbnailUrl: '',
+              intent: { languages: [secLang], popularity: 'high', discovery: 'medium' },
+            });
+          }
 
-          feed = [...dynamicPlaylists, ...feed].slice(0, 18); // Cap at 18 playlists
+          // 5. Decades
+          const decades = ['90s', '2000s', '2010s'];
+          const decade = decades[hash % decades.length];
+          feed.push({
+              id: `decade_${decade}_${primaryLang.toLowerCase()}`,
+              title: `${decade} ${primaryLang} Throwback`,
+              type: 'Decades',
+              strategy: 'multi',
+              searchQuery: [`${decade} ${primaryLang} hits`, `old ${primaryLang} songs`],
+              description: `Take a trip down memory lane.`,
+              thumbnailUrl: '',
+              intent: { languages: [primaryLang], popularity: 'high', discovery: 'low' },
+          });
         }
       }
     } catch (err) {
@@ -86,19 +172,29 @@ router.get('/', optionalAuth, async (req, res) => {
     }
   }
 
+  // Cold Start Fallback
+  if (!hasProfile || feed.length === 0) {
+    feed = [...CURATED_PLAYLISTS];
+  }
+
+
   try {
     const playlistIds = feed.map(p => p.id);
     const dbPlaylists = await DynamicPlaylist.find({ playlistId: { $in: playlistIds } }).select('playlistId thumbnailUrl');
     const dbMap = new Map(dbPlaylists.map(db => [db.playlistId, db.thumbnailUrl]));
 
-    // Fetch missing thumbnails for dynamic artist playlists
+    // Fetch missing thumbnails dynamically using JioSaavn search
     for (const p of feed) {
-      if (!dbMap.has(p.id) && p.id.startsWith('dynamic_artist_')) {
+      if (!dbMap.has(p.id) && !p.thumbnailUrl) {
         try {
-          const results = await MusicProvider.search(p.searchQuery, 1);
-          if (results && results.length > 0) dbMap.set(p.id, results[0].thumbnailUrl);
+          // If there's a search query array, use the first one, else use the string
+          const query = Array.isArray(p.searchQuery) ? p.searchQuery[0] : (p.searchQuery || p.title);
+          const results = await MusicProvider.search(query, 1);
+          if (results && results.length > 0) {
+             dbMap.set(p.id, results[0].thumbnailUrl);
+          }
         } catch (e) {
-          console.error('[HomeRoutes] Error fetching dynamic artist thumbnail:', e.message);
+          console.error(`[HomeRoutes] Error fetching dynamic thumbnail for ${p.id}:`, e.message);
         }
       }
     }
@@ -277,8 +373,6 @@ router.get('/playlist/:id', optionalAuth, async (req, res) => {
 });
 
 // ─── Charts / Trending ────────────────────────────────────────────────────────
-const SongStatistic = require('../models/SongStatistic');
-
 const jwt = require('jsonwebtoken');
 const TasteEngine = require('../services/TasteEngine');
 
