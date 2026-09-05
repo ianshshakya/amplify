@@ -1,6 +1,7 @@
 // lib/screens/import/bring_your_music_screen.dart
 // "Bring Your Music" — entry point for the Universal Music Import feature.
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -186,46 +187,99 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: 220,
-              backgroundColor: AppColors.background,
+              expandedHeight: 280,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.primary.withOpacity(0.8),
-                        const Color(0xFF6A1B9A).withOpacity(0.7),
-                        AppColors.background,
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 60, 24, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.library_music_rounded,
-                            size: 44, color: Colors.white),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Bring Your Music',
-                            style: TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Move your playlists and library\nwithout rebuilding everything from scratch.',
-                            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
-                          ),
-                        ],
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Glowing Orbs
+                    Positioned(
+                      top: -40,
+                      right: -60,
+                      child: Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary.withOpacity(0.4),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.primary.withOpacity(0.5), blurRadius: 100, spreadRadius: 50),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                    Positioned(
+                      bottom: -20,
+                      left: -80,
+                      child: Container(
+                        width: 250,
+                        height: 250,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF6A1B9A).withOpacity(0.3),
+                          boxShadow: [
+                            BoxShadow(color: const Color(0xFF6A1B9A).withOpacity(0.4), blurRadius: 120, spreadRadius: 40),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Glass Overlay
+                    ClipRRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.1),
+                                AppColors.background,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Content
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 60, 24, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: const Icon(Icons.library_music_rounded,
+                                size: 36, color: Colors.white),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Bring Your Music',
+                              style: TextStyle(
+                                fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Move your playlists and library\nwithout rebuilding everything from scratch.',
+                              style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.7), height: 1.4),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -335,135 +389,161 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceHighlight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isConnected ? accentColor.withOpacity(0.5) : Colors.white.withOpacity(0.06),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 48, height: 48,
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: accentColor, size: 26),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(provider.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                        if (isConnected)
-                          Row(
-                            children: [
-                              Icon(Icons.check_circle, size: 12, color: accentColor),
-                              const SizedBox(width: 4),
-                              Text('Connected',
-                                style: TextStyle(color: accentColor, fontSize: 11, fontWeight: FontWeight.w600)),
-                            ],
-                          )
-                        else
-                          Text('Not connected',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isConnected ? accentColor.withOpacity(0.4) : Colors.white.withOpacity(0.08),
+                width: 1.5,
               ),
-
-              const SizedBox(height: 12),
-              Text(provider.description,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.5)),
-
-              if (provider.limitation != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 12, color: AppColors.warning),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(provider.limitation!,
-                        style: TextStyle(color: AppColors.warning, fontSize: 11)),
-                    ),
-                  ],
-                ),
-              ],
-
-              const SizedBox(height: 16),
-
-              if (provider.id == 'spotify')
-                Row(
-                  children: [
-                    Expanded(
-                      child: _actionButton(
-                        label: 'Upload Export (ZIP)',
-                        icon: Icons.upload_file_rounded,
-                        color: accentColor,
-                        loading: isThisConnecting,
-                        onTap: _pickAndUploadSpotifyExport,
-                      ),
-                    ),
-                  ],
-                )
-              else if (!provider.configured)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${provider.name} integration not configured on this server.',
-                    style: TextStyle(color: AppColors.warning, fontSize: 11),
-                  ),
-                )
-              else
-                Row(
-                  children: [
-                    if (!isConnected)
-                      Expanded(
-                        child: _actionButton(
-                          label: 'Connect ${provider.name}',
-                          icon: Icons.link_rounded,
-                          color: accentColor,
-                          loading: isThisConnecting,
-                          onTap: () => _connectProvider(provider.id),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 52, height: 52,
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(color: accentColor.withOpacity(0.2), blurRadius: 12, spreadRadius: 2),
+                          ],
                         ),
+                        child: Icon(icon, color: accentColor, size: 28),
                       ),
-                    if (isConnected) ...[
+                      const SizedBox(width: 16),
                       Expanded(
-                        child: _actionButton(
-                          label: 'Import Library',
-                          icon: Icons.download_for_offline_rounded,
-                          color: AppColors.primary,
-                          loading: isThisConnecting,
-                          onTap: () => _startImport(provider.id),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(provider.name,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.3)),
+                            const SizedBox(height: 4),
+                            if (isConnected)
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle, size: 14, color: accentColor),
+                                  const SizedBox(width: 6),
+                                  Text('Connected',
+                                    style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                                ],
+                              )
+                            else
+                              Text('Not connected',
+                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w500)),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      IconButton(
-                        icon: Icon(Icons.link_off_rounded, color: AppColors.textSecondary, size: 20),
-                        tooltip: 'Disconnect',
-                        onPressed: () => _disconnect(provider.id),
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 16),
+                  Text(provider.description,
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.5)),
+
+                  if (provider.limitation != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline, size: 14, color: AppColors.warning),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(provider.limitation!,
+                              style: TextStyle(color: AppColors.warning, fontSize: 12, height: 1.3)),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-            ],
+
+                  const SizedBox(height: 20),
+
+                  if (provider.id == 'spotify')
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionButton(
+                            label: 'Upload Export (ZIP)',
+                            icon: Icons.upload_file_rounded,
+                            color: accentColor,
+                            loading: isThisConnecting,
+                            onTap: _pickAndUploadSpotifyExport,
+                            isPrimary: true,
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (!provider.configured)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${provider.name} integration not configured on this server.',
+                        style: TextStyle(color: AppColors.warning, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        if (!isConnected)
+                          Expanded(
+                            child: _actionButton(
+                              label: 'Connect ${provider.name}',
+                              icon: Icons.link_rounded,
+                              color: accentColor,
+                              loading: isThisConnecting,
+                              onTap: () => _connectProvider(provider.id),
+                              isPrimary: true,
+                            ),
+                          ),
+                        if (isConnected) ...[
+                          Expanded(
+                            child: _actionButton(
+                              label: 'Import Library',
+                              icon: Icons.download_for_offline_rounded,
+                              color: AppColors.primary,
+                              loading: isThisConnecting,
+                              onTap: () => _startImport(provider.id),
+                              isPrimary: true,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.link_off_rounded, color: Colors.white.withOpacity(0.6), size: 22),
+                              tooltip: 'Disconnect',
+                              onPressed: () => _disconnect(provider.id),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -472,31 +552,47 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
 
   Widget _connectedServiceTile(ConnectedService service) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceHighlight,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
         children: [
-          Icon(Icons.check_circle, size: 18, color: AppColors.primary),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(service.provider.capitalize(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                if (service.displayName != null)
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                if (service.displayName != null) ...[
+                  const SizedBox(height: 2),
                   Text(service.displayName!,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
+                ]
               ],
             ),
           ),
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              backgroundColor: AppColors.error.withOpacity(0.1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () => _disconnect(service.provider),
-            child: Text('Disconnect', style: TextStyle(color: AppColors.error, fontSize: 12)),
+            child: const Text('Disconnect', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           ),
         ],
       ),
@@ -509,23 +605,44 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
     required Color color,
     required bool loading,
     required VoidCallback onTap,
+    bool isPrimary = false,
   }) {
-    return SizedBox(
-      height: 44,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.15),
-          foregroundColor: color,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          side: BorderSide(color: color.withOpacity(0.4)),
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: isPrimary ? LinearGradient(
+          colors: [color.withOpacity(0.8), color],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ) : null,
+        color: isPrimary ? null : color.withOpacity(0.15),
+        boxShadow: isPrimary ? [
+          BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
+        ] : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: loading ? null : onTap,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (loading)
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2.5, color: isPrimary ? Colors.white : color))
+              else
+                Icon(icon, size: 20, color: isPrimary ? Colors.white : color),
+              const SizedBox(width: 10),
+              Text(label, style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isPrimary ? Colors.white : color,
+                letterSpacing: 0.2,
+              )),
+            ],
+          ),
         ),
-        onPressed: loading ? null : onTap,
-        icon: loading
-          ? SizedBox(width: 14, height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color))
-          : Icon(icon, size: 16),
-        label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
       ),
     );
   }
