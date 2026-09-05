@@ -285,7 +285,49 @@ router.get('/playlist/:id', optionalAuth, async (req, res) => {
         title: `More of ${artist}`,
         strategy: 'artist',
         searchQuery: artist,
-        intent: { popularity: 'high', discovery: 'low' },
+        intent: { popularity: 'high', discovery: 'low', purpose: 'artist' },
+      };
+    } else if (!playlistConfig && req.params.id.startsWith('top_charts_')) {
+      const lang = req.params.id.replace('top_charts_', '').replace(/_/g, ' ');
+      playlistConfig = {
+        id: req.params.id,
+        title: `${lang.charAt(0).toUpperCase() + lang.slice(1)} Top 50`,
+        strategy: 'multi',
+        searchQuery: [`${lang} top 50`, `trending ${lang} songs`],
+        intent: { languages: [lang], popularity: 'very-high', discovery: 'low' },
+      };
+    } else if (!playlistConfig && req.params.id.startsWith('trending_')) {
+      const lang = req.params.id.replace('trending_', '').replace(/_/g, ' ');
+      playlistConfig = {
+        id: req.params.id,
+        title: `Trending in ${lang.charAt(0).toUpperCase() + lang.slice(1)}`,
+        strategy: 'multi',
+        searchQuery: [`new viral ${lang} songs`, `trending ${lang}`],
+        intent: { languages: [lang], popularity: 'high', discovery: 'medium' },
+      };
+    } else if (!playlistConfig && req.params.id.startsWith('mood_')) {
+      // id format: mood_{mood}_{lang}
+      const parts = req.params.id.split('_');
+      const lang = parts.pop() || 'english';
+      const mood = parts.slice(1).join(' '); // in case mood has spaces
+      playlistConfig = {
+        id: req.params.id,
+        title: `${lang.charAt(0).toUpperCase() + lang.slice(1)} ${mood.charAt(0).toUpperCase() + mood.slice(1)}`,
+        strategy: 'multi',
+        searchQuery: [`${lang} ${mood} songs`, `best ${lang} ${mood}`],
+        intent: { languages: [lang], popularity: 'high', discovery: 'medium' },
+      };
+    } else if (!playlistConfig && req.params.id.startsWith('decade_')) {
+      // id format: decade_{decade}_{lang}
+      const parts = req.params.id.split('_');
+      const lang = parts.pop() || 'english';
+      const decade = parts.slice(1).join(' ');
+      playlistConfig = {
+        id: req.params.id,
+        title: `${decade} ${lang.charAt(0).toUpperCase() + lang.slice(1)} Throwback`,
+        strategy: 'multi',
+        searchQuery: [`${decade} ${lang} hits`, `old ${lang} songs`],
+        intent: { languages: [lang], popularity: 'high', discovery: 'low' },
       };
     }
 
