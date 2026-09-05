@@ -40,6 +40,7 @@ const streamCache = new SimpleCache(3600);
 const metadataCache = new SimpleCache(86400);
 
 module.exports = {
+  SimpleCache,
   streamCache,
   metadataCache
 };

@@ -1,7 +1,3 @@
-// lib/screens/import/import_review_screen.dart
-// Review screen for uncertain track matches.
-// Only shows REVIEW_REQUIRED tracks. User can select or skip.
-
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/import_models.dart';
@@ -34,7 +30,8 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
   Future<void> _loadTracks({int page = 1}) async {
     setState(() => _loading = true);
     try {
-      final res = await ImportService().getReviewTracks(widget.jobId, page: page);
+      final res =
+          await ImportService().getReviewTracks(widget.jobId, page: page);
       final items = (res['tracks'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map((m) => ImportReviewTrack.fromJson(m))
@@ -104,7 +101,8 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: const Text('Review Matches', style: TextStyle(color: Colors.white)),
+        title:
+            const Text('Review Matches', style: TextStyle(color: Colors.white)),
         actions: [
           if (_tracks.isNotEmpty)
             Padding(
@@ -112,7 +110,8 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
               child: Center(
                 child: Text(
                   '${_currentIndex + 1} / ${_tracks.length}',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ),
             ),
@@ -154,15 +153,21 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(track.title,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 Text(track.artist,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 14)),
                 if (track.album != null)
                   Text(track.album!,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12)),
                 if (track.durationMs != null)
                   Text(_formatDuration(track.durationMs!),
-                    style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+                      style: TextStyle(
+                          color: AppColors.textDisabled, fontSize: 11)),
               ],
             ),
           ),
@@ -205,8 +210,10 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
-                    side: BorderSide(color: AppColors.textSecondary.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: BorderSide(
+                        color: AppColors.textSecondary.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     minimumSize: const Size(0, 48),
                   ),
                   onPressed: () => _submitAndAdvance(null), // Skip
@@ -220,7 +227,8 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     minimumSize: const Size(0, 48),
                     disabledBackgroundColor: AppColors.surfaceHighlight,
                   ),
@@ -228,7 +236,9 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
                       ? () => _submitAndAdvance(_selectedVideoId)
                       : null,
                   child: Text(
-                    _selectedVideoId != null ? 'Confirm Match' : 'Select a match',
+                    _selectedVideoId != null
+                        ? 'Confirm Match'
+                        : 'Select a match',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -244,18 +254,20 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
     final isSelected = _selectedVideoId == candidate.videoId;
 
     return GestureDetector(
-      onTap: () => setState(() =>
-        _selectedVideoId = isSelected ? null : candidate.videoId
-      ),
+      onTap: () => setState(
+          () => _selectedVideoId = isSelected ? null : candidate.videoId),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.surfaceHighlight,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.15)
+              : AppColors.surfaceHighlight,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.06),
+            color:
+                isSelected ? AppColors.primary : Colors.white.withOpacity(0.06),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -264,10 +276,13 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
             // Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: candidate.thumbnailUrl != null && candidate.thumbnailUrl!.isNotEmpty
+              child: candidate.thumbnailUrl != null &&
+                      candidate.thumbnailUrl!.isNotEmpty
                   ? Image.network(
                       candidate.thumbnailUrl!,
-                      width: 44, height: 44, fit: BoxFit.cover,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _thumbPlaceholder(),
                     )
                   : _thumbPlaceholder(),
@@ -280,18 +295,25 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(candidate.title,
+                  Text(
+                    candidate.title,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w600, fontSize: 13,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(candidate.artist,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 11)),
                   if (candidate.durationMs != null)
                     Text(_formatDuration(candidate.durationMs!),
-                      style: TextStyle(color: AppColors.textDisabled, fontSize: 10)),
+                        style: TextStyle(
+                            color: AppColors.textDisabled, fontSize: 10)),
                 ],
               ),
             ),
@@ -300,14 +322,16 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _confidenceColor(candidate.confidenceScore).withOpacity(0.2),
+                color: _confidenceColor(candidate.confidenceScore)
+                    .withOpacity(0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 '${candidate.confidenceScore}%',
                 style: TextStyle(
                   color: _confidenceColor(candidate.confidenceScore),
-                  fontSize: 11, fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -316,7 +340,9 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
 
             // Selection indicator
             Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: isSelected ? AppColors.primary : AppColors.textDisabled,
               size: 20,
             ),
@@ -327,39 +353,46 @@ class _ImportReviewScreenState extends State<ImportReviewScreen> {
   }
 
   Widget _thumbPlaceholder() => Container(
-    width: 44, height: 44,
-    color: AppColors.surfaceHighlight,
-    child: Icon(Icons.music_note, color: AppColors.textDisabled, size: 20),
-  );
+        width: 44,
+        height: 44,
+        color: AppColors.surfaceHighlight,
+        child: Icon(Icons.music_note, color: AppColors.textDisabled, size: 20),
+      );
 
   Widget _emptyState() => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 64, color: AppColors.primary),
-          const SizedBox(height: 16),
-          const Text('No tracks to review!',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle_rounded,
+                  size: 64, color: AppColors.primary),
+              const SizedBox(height: 16),
+              const Text(
+                'No tracks to review!',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'All your imported tracks either matched automatically or could not be found in the catalog.',
+                style: TextStyle(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary),
+                child: const Text('Back to Library'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'All your imported tracks either matched automatically or could not be found in the catalog.',
-            style: TextStyle(color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Back to Library'),
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   Color _confidenceColor(int score) {
     if (score >= 85) return AppColors.primary;

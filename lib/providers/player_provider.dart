@@ -164,7 +164,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   // ─── Playback control ──────────────────────────────────────────────────────
 
-  Future<void> playTrack(Track track, {List<Track>? context}) async {
+  Future<void> playTrack(Track track, {List<Track>? context, String? analyticsContext}) async {
     final queue = context ?? [track];
     var idx = queue.indexWhere((t) => t.videoId == track.videoId);
     if (idx == -1) idx = 0;
@@ -195,7 +195,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       _userDataService.logWatchHistory(track).catchError((_) {});
 
       // Dispatch PLAY event to the self-learning engine
-      _musicService.logListeningEvent(track, 'PLAY').catchError((_) {});
+      _musicService.logListeningEvent(track, 'PLAY', context: analyticsContext).catchError((_) {});
 
     } on StreamUnavailableException catch (e) {
       debugPrint('[Player] Stream unavailable: $e');

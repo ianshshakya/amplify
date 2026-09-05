@@ -4,7 +4,24 @@ import '../models/mood_category.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
 import '../models/lyrics.dart';
+import '../models/home_feed.dart';
 import '../services/music_service.dart';
+import 'recommendation_provider.dart';
+
+/// Refreshes only on explicit invalidation/pull-to-refresh. Session mood and
+/// energy are sent as soft context signals; recommendation calculation stays
+/// on the backend.
+final homeRefreshProvider = StateProvider<bool>((_) => false);
+
+final dynamicHomeFeedProvider = FutureProvider.autoDispose<HomeFeed?>((ref) async {
+  final forceRefresh = ref.watch(homeRefreshProvider);
+  final session = ref.read(sessionContextProvider);
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 15), link.close);
+  final feed = await MusicService().getDynamicHomeFeed(mood: session.currentMood, energy: session.currentEnergy, forceRefresh: forceRefresh);
+  if (forceRefresh) ref.read(homeRefreshProvider.notifier).state = false;
+  return feed;
+});
 
 /// FutureProvider for the home-screen curated feed (personalized playlist metadata).
 final homeFeedProvider = FutureProvider<List<CuratedPlaylist>>(
@@ -72,4 +89,3 @@ final discoverTracksProvider = FutureProvider.autoDispose<List<Track>>((ref) asy
   Future.delayed(const Duration(minutes: 20), () => link.close());
   return MusicService().getDiscoverTracks();
 });
-

@@ -6,8 +6,24 @@ const UserMusicProfile = require('../models/UserMusicProfile');
 const SongStatistic = require('../models/SongStatistic');
 const CURATED_PLAYLISTS = require('../config/playlists');
 const optionalAuth = require('../middleware/optionalAuth');
+const { HomeFeedEngine } = require('../services/HomeFeedEngine');
 
 const router = express.Router();
+
+// Dynamic browse feed. This intentionally sits beside the legacy playlist
+// metadata response below so older clients can continue using GET /api/home.
+router.get('/feed', optionalAuth, async (req, res) => {
+  try {
+    const session = {
+      mood: req.query.mood || null,
+      energy: req.query.energy || null,
+    };
+    res.json(await HomeFeedEngine.getFeed(req.userId, session, req.query.refresh === '1'));
+  } catch (error) {
+    console.error('[HomeRoutes] Home feed error:', error.message);
+    res.status(500).json({ error: 'Failed to generate home feed' });
+  }
+});
 
 // ─── Helper: score a playlist config against a user profile ──────────────────
 function scorePlaylistForUser(playlist, languageAffinity, artistAffinity) {

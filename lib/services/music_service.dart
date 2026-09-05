@@ -5,6 +5,7 @@ import '../models/artist.dart';
 import '../models/album.dart';
 import '../models/lyrics.dart';
 import '../models/mood_category.dart';
+import '../models/home_feed.dart';
 import 'api_client.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -68,6 +69,21 @@ class MusicService {
           .toList();
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Server-ranked, user-scoped browse feed.  It is separate from autoplay.
+  Future<HomeFeed?> getDynamicHomeFeed({String? mood, String? energy, bool forceRefresh = false}) async {
+    try {
+      final query = <String>[];
+      if (mood != null) query.add('mood=${Uri.encodeComponent(mood)}');
+      if (energy != null) query.add('energy=${Uri.encodeComponent(energy)}');
+      if (forceRefresh) query.add('refresh=1');
+      final result = await _api.get('/home/feed${query.isEmpty ? '' : '?${query.join('&')}'}');
+      return result is Map ? HomeFeed.fromJson(Map<String, dynamic>.from(result)) : null;
+    } catch (e) {
+      debugPrint('Dynamic home feed error: $e');
+      return null;
     }
   }
 
