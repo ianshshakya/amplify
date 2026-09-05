@@ -13,6 +13,7 @@ import 'artist_screen.dart';
 
 import 'settings_screen.dart';
 import 'import/bring_your_music_screen.dart';
+import '../widgets/playlist_collage.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -188,14 +189,8 @@ class LibraryScreen extends ConsumerWidget {
                       ),
                       for (final playlist in playlists)
                         ListTile(
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceHighlight,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Icon(Icons.queue_music, color: Colors.white),
+                          leading: PlaylistCollage(
+                            imageUrls: playlist.tracks.map((t) => t.thumbnailUrl).toList(),
                           ),
                           title: Text(playlist.name),
                           subtitle: Text(

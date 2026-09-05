@@ -42,13 +42,28 @@ router.get('/', optionalAuth, async (req, res) => {
     }
   }
 
-  res.json(feed.map(p => ({
-    id: p.id,
-    title: p.title,
-    type: p.type,
-    description: p.description,
-    thumbnailUrl: p.thumbnailUrl,
-  })));
+  try {
+    const playlistIds = feed.map(p => p.id);
+    const dbPlaylists = await DynamicPlaylist.find({ playlistId: { $in: playlistIds } }).select('playlistId thumbnailUrl');
+    const dbMap = new Map(dbPlaylists.map(db => [db.playlistId, db.thumbnailUrl]));
+
+    res.json(feed.map(p => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      description: p.description,
+      thumbnailUrl: dbMap.get(p.id) || p.thumbnailUrl,
+    })));
+  } catch (err) {
+    console.error('[HomeRoutes] Error fetching DB thumbnails:', err.message);
+    res.json(feed.map(p => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      description: p.description,
+      thumbnailUrl: p.thumbnailUrl,
+    })));
+  }
 });
 
 // ─── Playlist: return songs for a curated playlist ─────────────────────────────
@@ -248,20 +263,40 @@ router.get('/charts', async (req, res) => {
 });
 
 // ─── Moods (static config response) ───────────────────────────────────────────
-router.get('/moods', (req, res) => {
+router.get('/moods', async (req, res) => {
   // Return mood playlists from curated config
   const moodPlaylists = CURATED_PLAYLISTS.filter(p => p.type === 'Moods');
-  res.json([
-    {
-      title: 'Moods & Genres',
-      playlists: moodPlaylists.map(p => ({
-        playlistId: p.id,
-        title: p.title,
-        description: p.description,
-        thumbnailUrl: p.thumbnailUrl,
-      }))
-    }
-  ]);
+  
+  try {
+    const playlistIds = moodPlaylists.map(p => p.id);
+    const dbPlaylists = await DynamicPlaylist.find({ playlistId: { $in: playlistIds } }).select('playlistId thumbnailUrl');
+    const dbMap = new Map(dbPlaylists.map(db => [db.playlistId, db.thumbnailUrl]));
+
+    res.json([
+      {
+        title: 'Moods & Genres',
+        playlists: moodPlaylists.map(p => ({
+          playlistId: p.id,
+          title: p.title,
+          description: p.description,
+          thumbnailUrl: dbMap.get(p.id) || p.thumbnailUrl,
+        }))
+      }
+    ]);
+  } catch (err) {
+    console.error('[HomeRoutes] Error fetching Moods DB thumbnails:', err.message);
+    res.json([
+      {
+        title: 'Moods & Genres',
+        playlists: moodPlaylists.map(p => ({
+          playlistId: p.id,
+          title: p.title,
+          description: p.description,
+          thumbnailUrl: p.thumbnailUrl,
+        }))
+      }
+    ]);
+  }
 });
 
 // ─── Mood Playlist: on-demand via PlaylistIntelligence ───────────────────────

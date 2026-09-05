@@ -5,6 +5,7 @@ import '../providers/player_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/mini_player.dart';
+import '../widgets/playlist_collage.dart';
 
 /// Shows a single server-side playlist (created by the user) and its
 /// tracks. For "Liked Songs" use LikedSongsScreen instead — that's a
@@ -57,6 +58,38 @@ class PlaylistScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                PlaylistCollage(
+                  imageUrls: playlist.tracks.map((t) => t.thumbnailUrl).toList(),
+                  width: 120,
+                  height: 120,
+                  borderRadius: 8,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        playlist.name,
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${playlist.tracks.length} songs',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (playlist.tracks.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
