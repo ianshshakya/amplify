@@ -121,50 +121,43 @@ router.get('/', optionalAuth, async (req, res) => {
           }
 
           // 4. Moods & Genres
-          const moodOptions = ['Chill', 'Workout', 'Party', 'Romance', 'Sad'];
+          const moodOptions = ['Chill', 'Workout', 'Party', 'Romance', 'Sad', 'Focus'];
           // Deterministic shuffle based on user ID to keep moods consistent for a while
           const hash = req.userId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-          const mood1 = moodOptions[hash % moodOptions.length];
-          const mood2 = moodOptions[(hash + 1) % moodOptions.length];
-
-          feed.push({
-            id: `mood_${mood1.toLowerCase()}_${primaryLang.toLowerCase()}`,
-            title: `${primaryLang} ${mood1}`,
-            type: 'Moods & Genres',
-            strategy: 'multi',
-            searchQuery: [`${primaryLang} ${mood1} songs`, `best ${primaryLang} ${mood1}`],
-            description: `Perfect ${mood1.toLowerCase()} vibes in ${primaryLang}.`,
-            thumbnailUrl: '',
-            intent: { languages: [primaryLang], popularity: 'high', discovery: 'medium' },
-          });
           
-          if (topLanguages.length > 1) {
-            const secLang = topLanguages[1];
+          for (let i = 0; i < 3; i++) {
+            const mood = moodOptions[(hash + i) % moodOptions.length];
+            const lang = topLanguages[i % topLanguages.length] || primaryLang;
+            
             feed.push({
-              id: `mood_${mood2.toLowerCase()}_${secLang.toLowerCase()}`,
-              title: `${secLang} ${mood2}`,
+              id: `mood_${mood.toLowerCase()}_${lang.toLowerCase()}`,
+              title: `${lang} ${mood}`,
               type: 'Moods & Genres',
               strategy: 'multi',
-              searchQuery: [`${secLang} ${mood2} songs`],
-              description: `Perfect ${mood2.toLowerCase()} vibes in ${secLang}.`,
+              searchQuery: [`${lang} ${mood} songs`, `best ${lang} ${mood}`],
+              description: `Perfect ${mood.toLowerCase()} vibes in ${lang}.`,
               thumbnailUrl: '',
-              intent: { languages: [secLang], popularity: 'high', discovery: 'medium' },
+              intent: { languages: [lang], popularity: 'high', discovery: 'medium' },
             });
           }
 
           // 5. Decades
-          const decades = ['90s', '2000s', '2010s'];
-          const decade = decades[hash % decades.length];
-          feed.push({
-              id: `decade_${decade}_${primaryLang.toLowerCase()}`,
-              title: `${decade} ${primaryLang} Throwback`,
-              type: 'Decades',
-              strategy: 'multi',
-              searchQuery: [`${decade} ${primaryLang} hits`, `old ${primaryLang} songs`],
-              description: `Take a trip down memory lane.`,
-              thumbnailUrl: '',
-              intent: { languages: [primaryLang], popularity: 'high', discovery: 'low' },
-          });
+          const decades = ['90s', '2000s', '2010s', '80s'];
+          for (let i = 0; i < 2; i++) {
+            const decade = decades[(hash + i) % decades.length];
+            const lang = topLanguages[i % topLanguages.length] || primaryLang;
+            
+            feed.push({
+                id: `decade_${decade}_${lang.toLowerCase()}`,
+                title: `${decade} ${lang} Throwback`,
+                type: 'Decades',
+                strategy: 'multi',
+                searchQuery: [`${decade} ${lang} hits`, `old ${lang} songs`],
+                description: `Take a trip down memory lane.`,
+                thumbnailUrl: '',
+                intent: { languages: [lang], popularity: 'high', discovery: 'low' },
+            });
+          }
         }
       }
     } catch (err) {
@@ -189,9 +182,17 @@ router.get('/', optionalAuth, async (req, res) => {
         try {
           // If there's a search query array, use the first one, else use the string
           const query = Array.isArray(p.searchQuery) ? p.searchQuery[0] : (p.searchQuery || p.title);
-          const results = await MusicProvider.search(query, 1);
-          if (results && results.length > 0) {
-             dbMap.set(p.id, results[0].thumbnailUrl);
+          
+          if (p.strategy === 'artist') {
+            const results = await MusicProvider.searchArtist(query, 1);
+            if (results && results.length > 0) {
+               dbMap.set(p.id, results[0].imageUrl || results[0].thumbnailUrl);
+            }
+          } else {
+            const results = await MusicProvider.search(query, 1);
+            if (results && results.length > 0) {
+               dbMap.set(p.id, results[0].thumbnailUrl);
+            }
           }
         } catch (e) {
           console.error(`[HomeRoutes] Error fetching dynamic thumbnail for ${p.id}:`, e.message);

@@ -211,6 +211,24 @@ class PlaylistIntelligence {
       if (!track.videoId || track.videoId.trim() === '') return false;
       // Must have a title
       if (!track.title || track.title === 'Unknown Title') return false;
+      
+      // Strict Artist Filtering
+      if (intent.purpose === 'artist') {
+        const query = intent.searchQuery;
+        const queries = intent.searchQueries || [];
+        
+        let matchFound = false;
+        const trackArtist = track.artist.toLowerCase();
+        
+        if (query && trackArtist.includes(query.toLowerCase())) {
+          matchFound = true;
+        } else if (queries.length > 0) {
+          matchFound = queries.some(q => trackArtist.includes(q.toLowerCase()));
+        }
+        
+        if (!matchFound) return false;
+      }
+
       return true;
       // Note: We do NOT hard-filter on language/era here — those are handled
       // via scoring penalties and the quality validator. Hard filtering too

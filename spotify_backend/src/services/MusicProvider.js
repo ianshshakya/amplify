@@ -16,6 +16,7 @@ const {
   getPlaylistTracks,
   getRelatedTracks,
   fetchSpotifyPlaylistTracks,
+  searchSaavnArtists,
 } = require('../utils/saavn');
 
 const { normalizeTracks, deduplicateTracks } = require('./AmplifyNormalizer');
@@ -46,6 +47,27 @@ class MusicProvider {
       return normalized;
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') console.error(`[MusicProvider] search("${query}") failed:`, err.message);
+      return [];
+    }
+  }
+
+  /**
+   * Search for artists by keyword query.
+   * @param {string} query
+   * @param {number} limit
+   * @returns {Promise<object[]>} Array of artists with { id, name, imageUrl, etc. }
+   */
+  static async searchArtist(query, limit = 5) {
+    const cacheKey = `artist_${query}_${limit}`;
+    const cached = metadataCache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const results = await searchSaavnArtists(query, limit);
+      if (results.length > 0) metadataCache.set(cacheKey, results);
+      return results;
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') console.error(`[MusicProvider] searchArtist("${query}") failed:`, err.message);
       return [];
     }
   }

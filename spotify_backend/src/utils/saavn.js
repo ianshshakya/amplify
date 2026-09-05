@@ -491,5 +491,5 @@ module.exports = {
   getPlaylistTracks,
   getRelatedTracks,
   getLyrics,
-  fetchSpotifyPlaylistTracks
+  fetchSpotifyPlaylistTracks,
 };

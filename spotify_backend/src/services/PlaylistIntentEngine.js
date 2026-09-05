@@ -334,6 +334,8 @@ function parseIntent(input) {
     mainstreamsDistribution: archetype.mainstreamsDistribution,
     sequenceStyle: archetype.sequenceStyle,
     minSongs: archetype.minSongs,
+    searchQuery: (typeof input === 'object' && input.searchQuery) ? input.searchQuery : null,
+    searchQueries: (typeof input === 'object' && input.searchQueries) ? input.searchQueries : null,
   };
 }
 
