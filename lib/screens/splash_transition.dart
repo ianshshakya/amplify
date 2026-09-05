@@ -15,133 +15,124 @@ class CinematicSplashOverlay extends StatefulWidget {
   State<CinematicSplashOverlay> createState() => _CinematicSplashOverlayState();
 }
 
-class _CinematicSplashOverlayState extends State<CinematicSplashOverlay> with TickerProviderStateMixin {
-  late final AnimationController _pulseController;
-  late final AnimationController _revealController;
-  late final Animation<double> _pulseGlow;
-  late final Animation<double> _pulseScale;
-  late final Animation<double> _revealScale;
-  late final Animation<double> _revealOpacity;
+class _CinematicSplashOverlayState extends State<CinematicSplashOverlay>
+    with TickerProviderStateMixin {
+
+  // Fade in the splash content
+  late final AnimationController _fadeInCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 400),
+  );
+
+  // Fade out the entire splash overlay
+  late final AnimationController _fadeOutCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 350),
+  );
+
+  late final Animation<double> _fadeIn = CurvedAnimation(
+    parent: _fadeInCtrl,
+    curve: Curves.easeOut,
+  );
+
+  late final Animation<double> _fadeOut = CurvedAnimation(
+    parent: _fadeOutCtrl,
+    curve: Curves.easeIn,
+  );
 
   bool _isRevealed = false;
-  bool _startReveal = false;
 
   @override
   void initState() {
     super.initState();
+    _fadeInCtrl.forward();
 
-    // 1. Pulsing Phase (While waiting for data)
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _pulseScale = Tween<double>(begin: 0.98, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
-    );
-    _pulseGlow = Tween<double>(begin: 0.0, end: 15.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
-    );
-
-    // 2. Reveal Phase (Triggered when ready)
-    _revealController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _revealScale = Tween<double>(begin: 1.0, end: 80.0).animate(
-      CurvedAnimation(parent: _revealController, curve: Curves.easeInOutExpo),
-    );
-    _revealOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _revealController,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
-      ),
-    );
-
-    _revealController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() {
-          _isRevealed = true;
-        });
+    _fadeOutCtrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _isRevealed = true);
       }
     });
 
-    if (widget.isReady) {
-      _triggerReveal();
-    }
+    if (widget.isReady) _triggerExit();
   }
 
   @override
   void didUpdateWidget(covariant CinematicSplashOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isReady && !oldWidget.isReady && !_startReveal) {
-      _triggerReveal();
-    }
+    if (widget.isReady && !oldWidget.isReady) _triggerExit();
   }
 
-  void _triggerReveal() {
-    setState(() => _startReveal = true);
-    _pulseController.stop();
-    // Give it a tiny delay to ensure the background frames are fully rendered
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) _revealController.forward();
+  void _triggerExit() {
+    // Small hold, then fade out
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && !_fadeOutCtrl.isAnimating) _fadeOutCtrl.forward();
     });
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
-    _revealController.dispose();
+    _fadeInCtrl.dispose();
+    _fadeOutCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isRevealed) {
-      return widget.child;
-    }
+    if (_isRevealed) return widget.child;
 
     return Stack(
       children: [
-        // The background app (silently loading/rendering)
         widget.child,
-
-        // The Splash Overlay
         AnimatedBuilder(
-          animation: Listenable.merge([_pulseController, _revealController]),
-          builder: (context, child) {
-            // Use reveal animations if starting reveal, otherwise use pulse animations
-            final currentScale = _startReveal ? _revealScale.value : _pulseScale.value;
-            final currentOpacity = _startReveal ? _revealOpacity.value : 1.0;
-            final currentGlow = _startReveal ? 0.0 : _pulseGlow.value;
-
+          animation: Listenable.merge([_fadeIn, _fadeOut]),
+          builder: (context, _) {
+            // Combine: fade in * (1 - fade out)
+            final opacity = _fadeIn.value * (1.0 - _fadeOut.value);
             return IgnorePointer(
-              ignoring: _startReveal,
+              ignoring: _fadeOutCtrl.isAnimating,
               child: Opacity(
-                opacity: currentOpacity,
+                opacity: opacity,
                 child: Container(
-                  color: AppColors.background, // Match OS splash screen exactly
+                  color: const Color(0xFF000000),
                   child: Center(
-                    child: Transform.scale(
-                      scale: currentScale,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.5),
-                              blurRadius: currentGlow,
-                              spreadRadius: currentGlow * 0.5,
-                            ),
-                          ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Icon
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(22),
+                          child: Image.asset(
+                            'assets/icon/app_icon.png',
+                            width: 88,
+                            height: 88,
+                          ),
                         ),
-                        child: Image.asset(
-                          'assets/icon/app_icon.png',
-                          width: 120,
-                          height: 120,
+                        const SizedBox(height: 20),
+                        // App name — explicit style to prevent DefaultTextStyle yellow underline
+                        const Text(
+                          'Amplify',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                            decoration: TextDecoration.none, // Prevent yellow debug underline
+                            fontFamily: 'Inter',
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Your music, your way',
+                          style: TextStyle(
+                            color: Color(0xFF16A6A1), // App primary teal
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
+                            decoration: TextDecoration.none,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

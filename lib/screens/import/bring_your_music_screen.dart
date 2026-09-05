@@ -106,8 +106,8 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
         
         if (mounted && res['importJobId'] != null) {
           final jobId = res['importJobId'] as String;
-          // Pre-emptively set active job in provider
-          ref.read(activeImportJobProvider.notifier).state = AsyncData(jobId);
+          // Start polling for this newly created job
+          ref.read(activeImportJobProvider.notifier).resumePolling(jobId);
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ImportProgressScreen(jobId: jobId, provider: 'spotify'),

@@ -121,22 +121,6 @@ final recentTracksProvider = FutureProvider.autoDispose<List<Track>>((ref) async
   }
 });
 
-// ─── One Song Away ────────────────────────────────────────────────────────────
-
-final oneSongAwayProvider = FutureProvider.autoDispose<Track?>((ref) async {
-  final keepAliveLink = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 30), () {
-    keepAliveLink.close();
-  });
-
-  try {
-    return await MusicService().getOneSongAway();
-  } catch (e) {
-    debugPrint('oneSongAwayProvider error: $e');
-    return null;
-  }
-});
-
 // ─── Next tracks provider (for autoplay) ─────────────────────────────────────
 // Triggered explicitly by the player when the queue runs out.
 

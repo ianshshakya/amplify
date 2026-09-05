@@ -6,7 +6,7 @@ import '../models/album.dart';
 import '../models/lyrics.dart';
 import '../services/music_service.dart';
 
-/// FutureProvider for the home-screen curated feed (5 curated playlists).
+/// FutureProvider for the home-screen curated feed (personalized playlist metadata).
 final homeFeedProvider = FutureProvider<List<CuratedPlaylist>>(
   (ref) => MusicService().getHomeFeed(),
 );
@@ -41,3 +41,35 @@ final albumDetailProvider = FutureProvider.family<Album?, String>(
 final lyricsProvider = FutureProvider.family<Lyrics?, String>(
   (ref, videoId) => MusicService().getLyrics(videoId),
 );
+
+// ─── NEW: Song of the Day — same for ALL users, date-seeded ──────────────────
+// Kept alive for 6 hours so it doesn't change while the user is in the app.
+final songOfTheDayProvider = FutureProvider.autoDispose<Track?>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(hours: 6), () => link.close());
+  return MusicService().getSongOfTheDay();
+});
+
+// ─── NEW: Made For You — multiple user-specific playlist stubs ───────────────
+// Kept alive for 30 minutes.
+final madeForYouProvider = FutureProvider.autoDispose<List<CuratedPlaylistData>>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 30), () => link.close());
+  return MusicService().getMadeForYouPlaylists();
+});
+
+// ─── NEW: Top Artists from user taste profile ─────────────────────────────────
+// Kept alive for 30 minutes.
+final topArtistsProvider = FutureProvider.autoDispose<List<Map<String, String>>>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 30), () => link.close());
+  return MusicService().getTopArtists();
+});
+
+// ─── NEW: Discover tracks from underexplored taste areas ─────────────────────
+final discoverTracksProvider = FutureProvider.autoDispose<List<Track>>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 20), () => link.close());
+  return MusicService().getDiscoverTracks();
+});
+

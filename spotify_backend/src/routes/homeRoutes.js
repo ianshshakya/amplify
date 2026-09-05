@@ -3,42 +3,86 @@ const MusicProvider = require('../services/MusicProvider');
 const PlaylistIntelligence = require('../services/PlaylistIntelligence');
 const DynamicPlaylist = require('../models/DynamicPlaylist');
 const UserMusicProfile = require('../models/UserMusicProfile');
+const SongStatistic = require('../models/SongStatistic');
 const CURATED_PLAYLISTS = require('../config/playlists');
 const optionalAuth = require('../middleware/optionalAuth');
 
 const router = express.Router();
 
-// Home: return playlist cards instantly (metadata only, no tracks)
+// ─── Helper: score a playlist config against a user profile ──────────────────
+function scorePlaylistForUser(playlist, languageAffinity, artistAffinity) {
+  let score = 0;
+
+  // Language match
+  const langs = (playlist.intent && playlist.intent.languages) ? playlist.intent.languages : [];
+  for (const lang of langs) {
+    if (languageAffinity[lang]) score += languageAffinity[lang] * 10;
+  }
+
+  // Artist match (for artist spotlight playlists)
+  if (playlist.searchQuery && artistAffinity) {
+    const safeKey = playlist.searchQuery.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    if (artistAffinity[safeKey]) score += artistAffinity[safeKey] * 20;
+  }
+
+  // Always show top charts and trending (baseline)
+  if (playlist.type === 'Top Charts') score += 5;
+  if (playlist.type === 'Trending Playlists') score += 3;
+
+  return score;
+}
+
+// ─── Home: return personalized playlist cards (metadata only, no tracks) ─────
 router.get('/', optionalAuth, async (req, res) => {
   let feed = [...CURATED_PLAYLISTS];
+  let languageAffinity = {};
+  let artistAffinity = {};
+  let hasProfile = false;
 
   if (req.userId) {
     try {
       const profile = await UserMusicProfile.findOne({ userId: req.userId });
-      if (profile && profile.artistAffinity && profile.artistAffinity.size > 0) {
-        // Convert Map to entries and sort by highest affinity
-        const topArtists = [...profile.artistAffinity.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .map(entry => entry[0])
-          .slice(0, 3); // Get top 3 artists
+      if (profile && profile.artistAffinity && profile.languageAffinity) {
+        languageAffinity = profile.languageAffinity instanceof Map
+          ? Object.fromEntries(profile.languageAffinity)
+          : (profile.languageAffinity || {});
+        artistAffinity = profile.artistAffinity instanceof Map
+          ? Object.fromEntries(profile.artistAffinity)
+          : (profile.artistAffinity || {});
 
-        // Create dynamic playlist sections for the user's top artists
-        const dynamicPlaylists = topArtists.map(artist => ({
-          id: `dynamic_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
-          title: `More of ${artist}`,
-          type: 'Made For You',
-          strategy: 'artist',
-          searchQuery: artist,
-          description: `Because you listen to ${artist}`,
-          thumbnailUrl: 'https://c.saavncdn.com/840/Best-Of-Arijit-Singh-Collection-Of-Romantic-Songs-Hindi-2025-20251203161112-500x500.jpg', // We use a generic fallback since we don't have the artist image instantly
-          intent: { popularity: 'high', discovery: 'low' },
-        }));
+        const hasLang = Object.keys(languageAffinity).length > 0;
+        const hasArtist = Object.keys(artistAffinity).length > 0;
+        hasProfile = hasLang || hasArtist;
 
-        // Inject them right after the "Made For You" (if exists) or at the top
-        feed = [...dynamicPlaylists, ...feed];
+        if (hasProfile) {
+          // Score every playlist and sort by relevance
+          feed = feed
+            .map(p => ({ ...p, _score: scorePlaylistForUser(p, languageAffinity, artistAffinity) }))
+            .sort((a, b) => b._score - a._score);
+
+          // Inject dynamic artist playlists for top 3 liked artists
+          const topArtists = Object.entries(artistAffinity)
+            .sort((a, b) => b[1] - a[1])
+            .map(e => e[0].replace(/_/g, ' '))
+            .slice(0, 3);
+
+          const dynamicPlaylists = topArtists.map(artist => ({
+            id: `dynamic_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
+            title: `More of ${artist}`,
+            type: 'Made For You',
+            strategy: 'artist',
+            searchQuery: artist,
+            description: `Because you listen to ${artist}`,
+            thumbnailUrl: '',
+            intent: { popularity: 'high', discovery: 'low' },
+            _score: 100, // Always inject these at top
+          }));
+
+          feed = [...dynamicPlaylists, ...feed].slice(0, 18); // Cap at 18 playlists
+        }
       }
     } catch (err) {
-      console.error('[HomeRoutes] Error building dynamic feed:', err.message);
+      console.error('[HomeRoutes] Error building personalized feed:', err.message);
     }
   }
 
@@ -47,16 +91,14 @@ router.get('/', optionalAuth, async (req, res) => {
     const dbPlaylists = await DynamicPlaylist.find({ playlistId: { $in: playlistIds } }).select('playlistId thumbnailUrl');
     const dbMap = new Map(dbPlaylists.map(db => [db.playlistId, db.thumbnailUrl]));
 
-    // Fetch missing thumbnails for dynamic playlists
+    // Fetch missing thumbnails for dynamic artist playlists
     for (const p of feed) {
       if (!dbMap.has(p.id) && p.id.startsWith('dynamic_artist_')) {
         try {
           const results = await MusicProvider.search(p.searchQuery, 1);
-          if (results && results.length > 0) {
-            dbMap.set(p.id, results[0].thumbnailUrl);
-          }
+          if (results && results.length > 0) dbMap.set(p.id, results[0].thumbnailUrl);
         } catch (e) {
-          console.error('[HomeRoutes] Error fetching dynamic artist fallback:', e.message);
+          console.error('[HomeRoutes] Error fetching dynamic artist thumbnail:', e.message);
         }
       }
     }
@@ -66,7 +108,7 @@ router.get('/', optionalAuth, async (req, res) => {
       title: p.title,
       type: p.type,
       description: p.description,
-      thumbnailUrl: dbMap.get(p.id) || p.thumbnailUrl,
+      thumbnailUrl: dbMap.get(p.id) || p.thumbnailUrl || '',
     })));
   } catch (err) {
     console.error('[HomeRoutes] Error fetching DB thumbnails:', err.message);
@@ -75,12 +117,63 @@ router.get('/', optionalAuth, async (req, res) => {
       title: p.title,
       type: p.type,
       description: p.description,
-      thumbnailUrl: p.thumbnailUrl,
+      thumbnailUrl: p.thumbnailUrl || '',
     })));
   }
 });
 
+// ─── Song of the Day: same for ALL users, date-seeded ────────────────────────
+// Picks the top-trending song for today and caches it in MongoDB by date string.
+// All users get the exact same song on the same calendar day.
+router.get('/song-of-the-day', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10); // e.g. "2026-09-05"
+    const cacheKey = `sotd_${today}`;
+
+    // Check if we already picked today's song
+    let cached = await DynamicPlaylist.findOne({ playlistId: cacheKey });
+    if (cached && cached.songs && cached.songs.length > 0) {
+      return res.json(cached.songs[0]);
+    }
+
+    // Pick the top trending song of today (deterministic)
+    // We use a date-based seed: sort by (trendScore * dateHash) to make it change daily
+    const dateHash = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
+    const candidates = await SongStatistic.find({ 'song.videoId': { $exists: true } })
+      .sort({ trendScore: -1, popularityScore: -1 })
+      .limit(50);
+
+    if (!candidates || candidates.length === 0) {
+      return res.status(404).json({ error: 'No song of the day available yet' });
+    }
+
+    // Seed selection: pick index based on date so it changes daily but is the same for all users
+    const idx = dateHash % Math.min(candidates.length, 20);
+    const sotd = candidates[idx]?.song;
+
+    if (!sotd) return res.status(404).json({ error: 'No song of the day available' });
+
+    // Cache in MongoDB for 24 hours
+    await DynamicPlaylist.findOneAndUpdate(
+      { playlistId: cacheKey },
+      { playlistId: cacheKey, songs: [sotd], updatedAt: new Date() },
+      { upsert: true }
+    );
+
+    res.json(sotd);
+  } catch (err) {
+    console.error('[HomeRoutes] Song of the Day error:', err.message);
+    // Fallback: return any popular song
+    try {
+      const fallback = await SongStatistic.findOne({}).sort({ popularityScore: -1 });
+      if (fallback?.song) return res.json(fallback.song);
+    } catch (_) {}
+    res.status(500).json({ error: 'Failed to fetch song of the day' });
+  }
+});
+
 // ─── Playlist: return songs for a curated playlist ─────────────────────────────
+
 // Uses stale-while-revalidate from MongoDB, with PlaylistIntelligence as the
 // live generation engine when cache is cold or stale.
 router.get('/playlist/:id', optionalAuth, async (req, res) => {

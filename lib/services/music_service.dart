@@ -290,16 +290,71 @@ class MusicService {
     }
   }
 
-  Future<Track?> getOneSongAway() async {
+  /// Song of the Day — same song for ALL users, date-seeded.
+  Future<Track?> getSongOfTheDay() async {
     try {
-      final result = await _api.get('/recommendations/one-song-away');
+      final result = await _api.get('/home/song-of-the-day');
       if (result == null) return null;
       return _trackFromJson(result as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('One Song Away error: $e');
+      debugPrint('Song of the Day error: $e');
       return null;
     }
   }
+
+  /// Made For You — returns 1-4 personalized playlist stubs with songs.
+  Future<List<CuratedPlaylistData>> getMadeForYouPlaylists() async {
+    try {
+      final result = await _api.get('/recommendations/made-for-you');
+      if (result is! List) return [];
+      return result.map((item) {
+        final m = item as Map<String, dynamic>;
+        final songs = (m['songs'] as List? ?? [])
+            .map((v) => _trackFromJson(v as Map<String, dynamic>))
+            .toList();
+        return CuratedPlaylistData(
+          id: m['id'] as String? ?? '',
+          title: m['title'] as String? ?? '',
+          description: m['description'] as String? ?? '',
+          thumbnailUrl: m['thumbnailUrl'] as String? ?? '',
+          songs: songs,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('getMadeForYouPlaylists error: $e');
+      return [];
+    }
+  }
+
+  /// Top Artists — returns up to 8 artists from the user's taste profile.
+  Future<List<Map<String, String>>> getTopArtists() async {
+    try {
+      final result = await _api.get('/recommendations/top-artists');
+      if (result is! List) return [];
+      return result
+          .map((item) => {
+                'name': (item['name'] as String? ?? ''),
+                'imageUrl': (item['imageUrl'] as String? ?? ''),
+              })
+          .toList();
+    } catch (e) {
+      debugPrint('getTopArtists error: $e');
+      return [];
+    }
+  }
+
+  /// Discover — tracks from underexplored areas of the user's taste.
+  Future<List<Track>> getDiscoverTracks() async {
+    try {
+      final results = await _api.get('/recommendations/discover');
+      if (results is! List) return [];
+      return results.map((v) => _trackFromJson(v as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('getDiscoverTracks error: $e');
+      return [];
+    }
+  }
+
 
   Future<List<Track>> getSongRadio(String songId) async {
     try {

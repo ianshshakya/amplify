@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/playlist_provider.dart';
 import '../providers/home_provider.dart';
 import '../providers/player_provider.dart';
-import '../providers/recommendation_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/track.dart';
 import '../models/mood_category.dart';
@@ -30,8 +29,10 @@ class HomeScreen extends ConsumerWidget {
     final playlists = ref.watch(playlistProvider);
     final homeFeed = ref.watch(homeFeedProvider);
     final charts = ref.watch(chartsProvider);
-    final dailyMix = ref.watch(dailyMixProvider);
-    final oneSongAway = ref.watch(oneSongAwayProvider);
+    final songOfTheDay = ref.watch(songOfTheDayProvider);
+    final madeForYou = ref.watch(madeForYouProvider);
+    final topArtists = ref.watch(topArtistsProvider);
+    final discoverTracks = ref.watch(discoverTracksProvider);
 
     return SafeArea(
       child: Stack(
@@ -99,9 +100,9 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // ─── Edge-to-Edge Discovery Hero Card ─────────────────────────
+                // ─── Edge-to-Edge Song of the Day Hero Card ───────────────────
                 SliverToBoxAdapter(
-                  child: oneSongAway.when(
+                  child: songOfTheDay.when(
                     data: (track) {
                       if (track == null) return const SizedBox.shrink();
                       return _HeroDiscoveryCard(track: track);
@@ -210,11 +211,11 @@ class HomeScreen extends ConsumerWidget {
 
                 const SliverToBoxAdapter(child: SizedBox(height: 36)),
 
-                // ─── Made For You (Daily Mix) ──────────────────────────────────
+                // ─── Made For You: Multiple Personalized Playlist Cards ────────
                 SliverToBoxAdapter(
-                  child: dailyMix.when(
-                    data: (mix) {
-                      if (mix == null || mix.songs.isEmpty) return const SizedBox.shrink();
+                  child: madeForYou.when(
+                    data: (playlists) {
+                      if (playlists.isEmpty) return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -225,9 +226,25 @@ class HomeScreen extends ConsumerWidget {
                               scrollDirection: Axis.horizontal,
                               physics: const BouncingScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: mix.songs.length > 10 ? 10 : mix.songs.length,
+                              itemCount: playlists.length,
                               itemBuilder: (context, i) {
-                                return _VerticalSongCard(track: mix.songs[i], contextTracks: mix.songs);
+                                final p = playlists[i];
+                                return _MadeForYouCard(
+                                  playlist: p,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CuratedPlaylistScreen(
+                                        playlist: CuratedPlaylist(
+                                          id: p.id,
+                                          title: p.title,
+                                          type: 'Made For You',
+                                          description: p.description,
+                                          thumbnailUrl: p.thumbnailUrl,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
                               },
                             ),
                           ),
@@ -240,7 +257,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // ─── Artists You Might Like (Circular Discs) ──────────────────
+                // ─── Top Artists: dynamic from taste profile ───────────────────
                 SliverToBoxAdapter(
                   child: SectionHeader(
                     title: 'Top Artists',
@@ -252,24 +269,73 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 180,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: const [
-                        _ArtistDisc(name: 'Arijit Singh', imageUrl: 'https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg'),
-                        _ArtistDisc(name: 'Taylor Swift', imageUrl: 'https://c.saavncdn.com/artists/Taylor_Swift_003_20200226074119_500x500.jpg'),
-                        _ArtistDisc(name: 'The Weeknd', imageUrl: 'https://c.saavncdn.com/artists/The_Weeknd_002_20241003071400_500x500.jpg'),
-                        _ArtistDisc(name: 'Shreya Ghoshal', imageUrl: 'https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg'),
-                        _ArtistDisc(name: 'Justin Bieber', imageUrl: 'https://c.saavncdn.com/artists/Justin_Bieber_005_20201127112218_500x500.jpg'),
-                      ],
+                  child: topArtists.when(
+                    data: (artists) => SizedBox(
+                      height: 180,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: artists.length,
+                        itemBuilder: (context, i) {
+                          final artist = artists[i];
+                          return _ArtistDisc(
+                            name: artist['name'] ?? '',
+                            imageUrl: artist['imageUrl'] ?? '',
+                          );
+                        },
+                      ),
+                    ),
+                    loading: () => SizedBox(
+                      height: 180,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: 5,
+                        itemBuilder: (_, __) => Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: SkeletonLoader.card(size: 100, borderRadius: 50),
+                        ),
+                      ),
+                    ),
+                    error: (_, __) => SizedBox(
+                      height: 180,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: const [
+                          _ArtistDisc(name: 'Arijit Singh', imageUrl: 'https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg'),
+                          _ArtistDisc(name: 'Taylor Swift', imageUrl: 'https://c.saavncdn.com/artists/Taylor_Swift_003_20200226074119_500x500.jpg'),
+                          _ArtistDisc(name: 'The Weeknd', imageUrl: 'https://c.saavncdn.com/artists/The_Weeknd_002_20241003071400_500x500.jpg'),
+                          _ArtistDisc(name: 'Shreya Ghoshal', imageUrl: 'https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg'),
+                        ],
+                      ),
                     ),
                   ),
                 ),
 
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                // ─── Discover Something New section ───────────────────────────
+                SliverToBoxAdapter(
+                  child: discoverTracks.when(
+                    data: (tracks) {
+                      if (tracks.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SectionHeader(title: 'Discover Something New'),
+                          ...tracks.take(8).map((track) => _DiscoverTrackTile(track: track)),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                ),
+
 
                 // ─── Dynamic Categories (e.g. Trending, Top Charts) ───────────────
                 SliverToBoxAdapter(
@@ -896,6 +962,91 @@ class _PlaylistSquareCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MadeForYouCard extends StatelessWidget {
+  final CuratedPlaylistData playlist;
+  final VoidCallback onTap;
+
+  const _MadeForYouCard({required this.playlist, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))
+                ],
+              ),
+              child: PremiumImage(
+                imageUrl: playlist.thumbnailUrl,
+                width: 160,
+                height: 160,
+                borderRadius: 16,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              playlist.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              playlist.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscoverTrackTile extends ConsumerWidget {
+  final Track track;
+  const _DiscoverTrackTile({required this.track});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: PremiumImage(
+        imageUrl: track.thumbnailUrl,
+        width: 48,
+        height: 48,
+        borderRadius: 8,
+      ),
+      title: Text(
+        track.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.white),
+      ),
+      subtitle: Text(
+        track.artist,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+      ),
+      trailing: const Icon(Icons.more_vert, color: Colors.white54, size: 20),
+      onTap: () {
+        ref.read(playerProvider.notifier).playTrack(track);
+      },
     );
   }
 }

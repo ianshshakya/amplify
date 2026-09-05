@@ -299,4 +299,222 @@ Do not output markdown, do not output anything other than JSON.`
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW: Gap 3 — Made For You: multiple user-specific playlist stubs
+// ─────────────────────────────────────────────────────────────────────────────
+const UserMusicProfile = require('../models/UserMusicProfile');
+const MusicProvider = require('../services/MusicProvider');
+
+/**
+ * @route GET /api/recommendations/made-for-you
+ * @desc Returns 3-5 personalized playlist stubs + songs based on user taste dimensions
+ */
+router.get('/made-for-you', async (req, res) => {
+  try {
+    const profile = await UserMusicProfile.findOne({ userId: req.userId });
+
+    // Cold-start: return the standard daily mix as a single stub
+    if (!profile || (!profile.artistAffinity?.size && !profile.languageAffinity?.size)) {
+      const dailySongs = await RecommendationEngine.getDailyMix(req.userId);
+      return res.json([{
+        id: 'daily-mix',
+        title: 'Your Daily Mix',
+        description: 'A personalized mix just for you.',
+        thumbnailUrl: dailySongs[0]?.thumbnailUrl || '',
+        songs: dailySongs.slice(0, 20),
+      }]);
+    }
+
+    const artistAffinity = profile.artistAffinity instanceof Map
+      ? Object.fromEntries(profile.artistAffinity) : (profile.artistAffinity || {});
+    const languageAffinity = profile.languageAffinity instanceof Map
+      ? Object.fromEntries(profile.languageAffinity) : (profile.languageAffinity || {});
+
+    const playlists = [];
+
+    // 1. General daily mix (always first)
+    const dailySongs = await RecommendationEngine.getDailyMix(req.userId);
+    if (dailySongs.length > 0) {
+      playlists.push({
+        id: 'daily-mix',
+        title: 'Daily Mix',
+        description: 'Your personalized everyday mix.',
+        thumbnailUrl: dailySongs[0]?.thumbnailUrl || '',
+        songs: dailySongs.slice(0, 20),
+      });
+    }
+
+    // 2. Top artist mixes (up to 2)
+    const topArtists = Object.entries(artistAffinity)
+      .sort((a, b) => b[1] - a[1])
+      .map(e => e[0].replace(/_/g, ' '))
+      .slice(0, 2);
+
+    for (const artist of topArtists) {
+      try {
+        const intentInput = {
+          id: `mfy_${artist}`,
+          title: `More of ${artist}`,
+          description: `Because you love ${artist}`,
+          intent: { popularity: 'high', discovery: 'low' },
+        };
+        const result = await PlaylistIntelligence.generate(intentInput, req.userId, {
+          targetCount: 20,
+          forceRefresh: false,
+        });
+        if (result.songs.length > 0) {
+          playlists.push({
+            id: `mfy_artist_${artist.replace(/\s+/g, '_').toLowerCase()}`,
+            title: `More of ${artist}`,
+            description: `Because you love ${artist}`,
+            thumbnailUrl: result.songs[0]?.thumbnailUrl || '',
+            songs: result.songs.slice(0, 20),
+          });
+        }
+      } catch (e) {
+        console.warn(`[MadeForYou] Artist mix failed for ${artist}:`, e.message);
+      }
+    }
+
+    // 3. Top language mix
+    const topLanguage = Object.entries(languageAffinity)
+      .sort((a, b) => b[1] - a[1])
+      .map(e => e[0])[0];
+
+    if (topLanguage && topLanguage !== 'Unknown') {
+      try {
+        const intentInput = {
+          id: `mfy_lang_${topLanguage}`,
+          title: `${topLanguage} Hits for You`,
+          description: `Your favorite ${topLanguage} songs`,
+          intent: { languages: [topLanguage], popularity: 'high', discovery: 'medium' },
+        };
+        const result = await PlaylistIntelligence.generate(intentInput, req.userId, {
+          targetCount: 20,
+          forceRefresh: false,
+        });
+        if (result.songs.length > 0) {
+          playlists.push({
+            id: `mfy_lang_${topLanguage.toLowerCase()}`,
+            title: `${topLanguage} Hits for You`,
+            description: `Your favorite ${topLanguage} songs`,
+            thumbnailUrl: result.songs[0]?.thumbnailUrl || '',
+            songs: result.songs.slice(0, 20),
+          });
+        }
+      } catch (e) {
+        console.warn('[MadeForYou] Language mix failed:', e.message);
+      }
+    }
+
+    res.json(playlists);
+  } catch (error) {
+    console.error('Made For You error:', error.message);
+    res.status(500).json({ error: 'Failed to generate Made For You playlists' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW: Gap 4 — Top Artists from user taste profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @route GET /api/recommendations/top-artists
+ * @desc Returns top 8 artists from the user's taste profile with image URLs
+ */
+router.get('/top-artists', async (req, res) => {
+  try {
+    const profile = await UserMusicProfile.findOne({ userId: req.userId });
+
+    let topArtistNames = [];
+
+    if (profile && profile.artistAffinity) {
+      const artistAffinity = profile.artistAffinity instanceof Map
+        ? Object.fromEntries(profile.artistAffinity) : (profile.artistAffinity || {});
+      topArtistNames = Object.entries(artistAffinity)
+        .sort((a, b) => b[1] - a[1])
+        .map(e => e[0].replace(/_/g, ' '))
+        .slice(0, 8);
+    }
+
+    // Cold-start fallback: popular artists
+    if (topArtistNames.length < 4) {
+      const fallbackArtists = ['Arijit Singh', 'Taylor Swift', 'The Weeknd', 'Shreya Ghoshal', 'Justin Bieber', 'Diljit Dosanjh'];
+      const existingSet = new Set(topArtistNames.map(a => a.toLowerCase()));
+      for (const a of fallbackArtists) {
+        if (!existingSet.has(a.toLowerCase())) topArtistNames.push(a);
+        if (topArtistNames.length >= 8) break;
+      }
+    }
+
+    // Fetch artist image URLs via JioSaavn search
+    const artists = await Promise.all(topArtistNames.map(async (name) => {
+      try {
+        const results = await MusicProvider.search(`${name} songs`, 1);
+        const imageUrl = results?.[0]?.thumbnailUrl || '';
+        return { name, imageUrl };
+      } catch (_) {
+        return { name, imageUrl: '' };
+      }
+    }));
+
+    res.json(artists);
+  } catch (error) {
+    console.error('Top Artists error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch top artists' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW: Gap 5 — Discover: tracks from underexplored areas of user taste
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @route GET /api/recommendations/discover
+ * @desc Returns ~15 songs the user likely hasn't heard from unexplored areas
+ */
+router.get('/discover', async (req, res) => {
+  try {
+    const profile = await UserMusicProfile.findOne({ userId: req.userId });
+
+    // Languages user has NOT explored much
+    const allLanguages = ['Hindi', 'English', 'Punjabi', 'Tamil', 'Telugu', 'Bengali'];
+    let underexploredLang = 'English';
+
+    if (profile && profile.languageAffinity) {
+      const langAffinity = profile.languageAffinity instanceof Map
+        ? Object.fromEntries(profile.languageAffinity) : (profile.languageAffinity || {});
+
+      const topLang = Object.entries(langAffinity)
+        .sort((a, b) => b[1] - a[1])
+        .map(e => e[0])[0];
+
+      // Pick a language that's NOT the user's top language
+      underexploredLang = allLanguages.find(l => l !== topLang) || 'English';
+    }
+
+    const intentInput = {
+      id: 'discover',
+      title: 'Discover Something New',
+      description: 'Fresh finds you might love',
+      intent: {
+        languages: [underexploredLang],
+        popularity: 'medium',
+        discovery: 'high',
+      },
+    };
+
+    const result = await PlaylistIntelligence.generate(intentInput, req.userId, {
+      targetCount: 15,
+      forceRefresh: true,
+    });
+
+    res.json(result.songs.slice(0, 15));
+  } catch (error) {
+    console.error('Discover error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch discover tracks' });
+  }
+});
+
 module.exports = router;
+

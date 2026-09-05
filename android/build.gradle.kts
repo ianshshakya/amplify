@@ -5,6 +5,18 @@ allprojects {
     }
 }
 
+// Force all plugin subprojects to compile against SDK 36
+// This is required because flutter_plugin_android_lifecycle needs compileSdk >= 36
+subprojects {
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            (project.extensions.getByName("android") as com.android.build.gradle.BaseExtension).apply {
+                compileSdkVersion(36)
+            }
+        }
+    }
+}
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
