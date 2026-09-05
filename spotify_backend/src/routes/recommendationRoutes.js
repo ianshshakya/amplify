@@ -30,118 +30,6 @@ router.get('/daily-mix', async (req, res) => {
 });
 
 /**
- * @route GET /api/recommendations/made-for-you
- * @desc Get multiple curated playlists based on user's language and artist affinities
- */
-router.get('/made-for-you', async (req, res) => {
-  try {
-    const profile = await UserMusicProfile.findOne({ userId: req.userId });
-    if (!profile) return res.json([]);
-
-    const languageAffinity = Object.entries(profile.languageAffinity || {}).sort((a, b) => b[1] - a[1]);
-    const artistAffinity = Object.entries(profile.artistAffinity || {}).sort((a, b) => b[1] - a[1]);
-    
-    let playlists = [];
-
-    // 1. Daily Mix (Always present if they have profile)
-    playlists.push({
-      id: 'daily_mix',
-      title: 'Daily Mix',
-      type: 'Made For You',
-      strategy: 'mix',
-      searchQuery: '',
-      description: 'A mix of your favorite tracks and new discoveries.',
-      thumbnailUrl: ''
-    });
-
-    // 2. Discover Weekly (High discovery)
-    playlists.push({
-      id: 'discover_weekly',
-      title: 'Discover Weekly',
-      type: 'Made For You',
-      strategy: 'discover',
-      searchQuery: '',
-      description: 'Fresh music tailored to your taste, updated every week.',
-      thumbnailUrl: ''
-    });
-
-    // 3. Artist Mix (If they have favorite artists)
-    if (artistAffinity.length > 0) {
-      const topArtist = artistAffinity[0][0];
-      playlists.push({
-        id: `artist_mix_${topArtist.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-        title: `${topArtist} Mix`,
-        type: 'Made For You',
-        strategy: 'artist',
-        searchQuery: topArtist,
-        description: `Music from ${topArtist} and similar artists.`,
-        thumbnailUrl: ''
-      });
-    }
-
-    // 4. Language Hits (If they have favorite languages)
-    if (languageAffinity.length > 0) {
-      const topLang = languageAffinity[0][0];
-      playlists.push({
-        id: `language_mix_${topLang.toLowerCase()}`,
-        title: `${topLang} Hits Mix`,
-        type: 'Made For You',
-        strategy: 'language',
-        searchQuery: `${topLang} best songs`,
-        description: `The best of ${topLang} music, curated for you.`,
-        thumbnailUrl: ''
-      });
-    }
-
-    res.json(playlists);
-  } catch (error) {
-    console.error('Made For You route error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch made-for-you' });
-  }
-});
-
-/**
- * @route GET /api/recommendations/top-artists
- * @desc Get user's top artists with their profile images
- */
-router.get('/top-artists', async (req, res) => {
-  try {
-    const profile = await UserMusicProfile.findOne({ userId: req.userId });
-    if (!profile || !profile.artistAffinity) return res.json([]);
-
-    const sortedArtists = Object.entries(profile.artistAffinity)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(entry => entry[0]);
-
-    if (sortedArtists.length === 0) return res.json([]);
-
-    // Fetch images for each artist from JioSaavn
-    const artistPromises = sortedArtists.map(async (artistName) => {
-      try {
-        const results = await MusicProvider.searchArtist(artistName, 1);
-        if (results && results.length > 0) {
-          return {
-            name: artistName,
-            thumbnailUrl: results[0].imageUrl
-          };
-        }
-      } catch (e) {
-        console.error(`Error fetching artist image for ${artistName}:`, e.message);
-      }
-      return { name: artistName, thumbnailUrl: '' };
-    });
-
-    const artistsWithImages = await Promise.all(artistPromises);
-    res.json(artistsWithImages);
-
-  } catch (error) {
-    console.error('Top Artists route error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch top-artists' });
-  }
-});
-
-/**
  * @route GET /api/recommendations/radio/song/:id
  * @desc Get a radio queue from a seed song. Supports session context via query params.
  */
@@ -416,8 +304,6 @@ Do not output markdown, do not output anything other than JSON.`
 // ─────────────────────────────────────────────────────────────────────────────
 // NEW: Gap 3 — Made For You: multiple user-specific playlist stubs
 // ─────────────────────────────────────────────────────────────────────────────
-const UserMusicProfile = require('../models/UserMusicProfile');
-const MusicProvider = require('../services/MusicProvider');
 
 /**
  * @route GET /api/recommendations/made-for-you
@@ -470,7 +356,8 @@ router.get('/made-for-you', async (req, res) => {
           id: `mfy_${artist}`,
           title: `More of ${artist}`,
           description: `Because you love ${artist}`,
-          intent: { popularity: 'high', discovery: 'low' },
+          intent: { popularity: 'high', discovery: 'low', purpose: 'artist' },
+          searchQuery: artist,
         };
         const result = await PlaylistIntelligence.generate(intentInput, req.userId, {
           targetCount: 20,
@@ -564,8 +451,8 @@ router.get('/top-artists', async (req, res) => {
     // Fetch artist image URLs via JioSaavn search
     const artists = await Promise.all(topArtistNames.map(async (name) => {
       try {
-        const results = await MusicProvider.search(`${name} songs`, 1);
-        const imageUrl = results?.[0]?.thumbnailUrl || '';
+        const results = await MusicProvider.searchArtist(name, 1);
+        const imageUrl = results?.[0]?.imageUrl || '';
         return { name, imageUrl };
       } catch (_) {
         return { name, imageUrl: '' };
