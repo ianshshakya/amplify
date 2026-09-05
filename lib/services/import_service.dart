@@ -61,6 +61,11 @@ class ImportService {
 
   // ─── File Import ─────────────────────────────────────────────────────────
 
+  Future<Map<String, dynamic>> uploadSpotifyExport(String filePath) async {
+    final res = await _api.uploadFile('/import/file/spotify/upload', filePath, 'file');
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   /// Upload a listening history file (base64-encoded JSON).
   Future<Map<String, dynamic>> uploadHistoryFile(
     String provider,

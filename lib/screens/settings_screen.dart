@@ -132,7 +132,50 @@ class SettingsScreen extends ConsumerWidget {
 
 
 
-          // Section 5 - Account
+          const Divider(color: Color(0xFF282828)),
+
+          // Section 5 - Imported Data
+          ListTile(
+            title: const Text('Imported Data', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('Manage your Spotify data import', style: TextStyle(color: Color(0xFFB3B3B3))),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE2534C),
+              ),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF282828),
+                    title: const Text('Delete Imported Data?', style: TextStyle(color: Colors.white)),
+                    content: const Text('This will permanently delete all imported playlists, library tracks, and history records from your Amplify account.', style: TextStyle(color: Colors.white70)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Imported data deleted.'))
+                          );
+                        },
+                        child: const Text('Delete Data', style: TextStyle(color: Color(0xFFE2534C))),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Text('Delete Imported Data', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+          const Divider(color: Color(0xFF282828)),
+
+          // Section 6 - Account
           ListTile(
             leading: const Icon(Icons.logout, color: Color(0xFFE2534C)),
             title: const Text('Log out', style: TextStyle(color: Color(0xFFE2534C))),

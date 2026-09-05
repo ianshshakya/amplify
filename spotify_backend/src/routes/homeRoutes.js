@@ -47,6 +47,20 @@ router.get('/', optionalAuth, async (req, res) => {
     const dbPlaylists = await DynamicPlaylist.find({ playlistId: { $in: playlistIds } }).select('playlistId thumbnailUrl');
     const dbMap = new Map(dbPlaylists.map(db => [db.playlistId, db.thumbnailUrl]));
 
+    // Fetch missing thumbnails for dynamic playlists
+    for (const p of feed) {
+      if (!dbMap.has(p.id) && p.id.startsWith('dynamic_artist_')) {
+        try {
+          const results = await MusicProvider.search(p.searchQuery, 1);
+          if (results && results.length > 0) {
+            dbMap.set(p.id, results[0].thumbnailUrl);
+          }
+        } catch (e) {
+          console.error('[HomeRoutes] Error fetching dynamic artist fallback:', e.message);
+        }
+      }
+    }
+
     res.json(feed.map(p => ({
       id: p.id,
       title: p.title,

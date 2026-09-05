@@ -33,8 +33,17 @@ const ImportJob = require('../models/ImportJob');
 const ImportedTrack = require('../models/ImportedTrack');
 const ImportWorker = require('../services/ImportWorker');
 const SpotifyImporter = require('../services/importers/SpotifyImporter');
+const SpotifyFileImporter = require('../services/importers/SpotifyFileImporter');
 const YouTubeImporter = require('../services/importers/YouTubeImporter');
 const { encryptToken, decryptToken } = require('../utils/crypto');
+
+const multer = require('multer');
+const unzipper = require('unzipper');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 1024 * 1024 * 1024 } }); // 1GB limit
 
 const router = express.Router();
 
@@ -202,9 +211,70 @@ router.get('/oauth/:provider', (req, res) => {
   res.json({ authUrl, state });
 });
 
+// ─── File Upload (Spotify ZIP) ───────────────────────────────────────────────
 
+router.post('/file/:provider/upload', upload.single('file'), async (req, res) => {
+  const { provider } = req.params;
+  
+  if (provider !== 'spotify') {
+    return res.status(400).json({ message: 'File import only supported for Spotify right now.' });
+  }
 
-// ─── Import Job Management ───────────────────────────────────────────────────
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded.' });
+  }
+
+  const zipFilePath = req.file.path;
+  const tempExtractedDir = path.join(os.tmpdir(), `spotify_export_${crypto.randomUUID()}`);
+  
+  try {
+    fs.mkdirSync(tempExtractedDir, { recursive: true });
+    
+    // Extract ZIP file
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(zipFilePath)
+        .pipe(unzipper.Extract({ path: tempExtractedDir }))
+        .on('close', resolve)
+        .on('error', reject);
+    });
+
+    // Cleanup the uploaded zip file immediately
+    fs.unlinkSync(zipFilePath);
+
+    // Create ImportJob
+    const job = await ImportJob.create({
+      userId: req.userId,
+      provider: 'spotify_export',
+      status: 'QUEUED',
+    });
+
+    const importer = new SpotifyFileImporter(tempExtractedDir);
+
+    // Run in background
+    setImmediate(() => {
+      ImportWorker.run(job._id.toString(), importer)
+        .then(() => {
+          // Cleanup the extracted files
+          fs.rmSync(tempExtractedDir, { recursive: true, force: true });
+        })
+        .catch(err => {
+          console.error('[Import] Worker error for file upload:', err.message);
+          fs.rmSync(tempExtractedDir, { recursive: true, force: true });
+        });
+    });
+
+    res.status(202).json({
+      importJobId: job._id,
+      status: 'QUEUED',
+      message: 'Export file uploaded and extraction started. Poll /api/import/jobs/:id for progress.',
+    });
+  } catch (err) {
+    console.error(`[Import] File upload error:`, err);
+    if (fs.existsSync(zipFilePath)) fs.unlinkSync(zipFilePath);
+    if (fs.existsSync(tempExtractedDir)) fs.rmSync(tempExtractedDir, { recursive: true, force: true });
+    res.status(500).json({ message: 'Failed to process uploaded file.' });
+  }
+});
 
 router.post('/:provider/start', async (req, res) => {
   const { provider } = req.params;

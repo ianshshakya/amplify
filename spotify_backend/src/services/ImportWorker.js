@@ -410,23 +410,27 @@ class ImportWorker {
 
   static async _importListeningHistory(job, importer) {
     const source = job.provider.replace('_file', '');
-    const sourceType = `${source}_import`; // 'spotify_import' | 'youtube_import'
+    const sourceType = `${source}_import`; // 'spotify_export_import'
 
     try {
       let cursor = null;
-      const historyEvents = [];
+      let totalHistoryRecords = 0;
 
       do {
         const { events, nextCursor } = await importer.getListeningHistory(cursor);
-        historyEvents.push(...events);
+        
+        if (events.length > 0) {
+          await this._writeHistoryEvents(job.userId, events, sourceType);
+          totalHistoryRecords += events.length;
+          
+          await ImportJob.updateOne(
+            { _id: job._id },
+            { $inc: { historyRecords: events.length } }
+          );
+        }
+        
         cursor = nextCursor;
-      } while (cursor && historyEvents.length < 50);
-
-      await this._writeHistoryEvents(job.userId, historyEvents, sourceType);
-      await ImportJob.updateOne(
-        { _id: job._id },
-        { $inc: { historyRecords: historyEvents.length } }
-      );
+      } while (cursor);
 
     } catch (err) {
       if (err.code === 'NOT_SUPPORTED') return; // Provider doesn't support this

@@ -73,6 +73,28 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> uploadFile(String path, String filePath, String fieldName) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+      
+      final token = await _tokenStorage.getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+
+      // Increase timeout for large files
+      final streamedResponse = await request.send().timeout(const Duration(minutes: 5));
+      final res = await http.Response.fromStream(streamedResponse);
+      
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(500, 'File upload failed or timed out. Please try again.');
+    }
+  }
+
   dynamic _handleResponse(http.Response res) {
     final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : {};
 

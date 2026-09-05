@@ -4,11 +4,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/import_provider.dart';
 import '../../models/import_models.dart';
 import '../../services/import_service.dart';
 import 'import_progress_screen.dart';
+import 'spotify_export_guide_screen.dart';
 
 class BringYourMusicScreen extends ConsumerStatefulWidget {
   const BringYourMusicScreen({super.key});
@@ -81,6 +83,42 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Connection failed: $e'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() { _isConnecting = false; _connectingProvider = null; });
+    }
+  }
+
+  Future<void> _pickAndUploadSpotifyExport() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() { _isConnecting = true; _connectingProvider = 'spotify'; });
+        
+        final filePath = result.files.single.path!;
+        final res = await ImportService().uploadSpotifyExport(filePath);
+        
+        if (mounted && res['importJobId'] != null) {
+          final jobId = res['importJobId'] as String;
+          // Pre-emptively set active job in provider
+          ref.read(activeImportJobProvider.notifier).state = AsyncData(jobId);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ImportProgressScreen(jobId: jobId, provider: 'spotify'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Upload failed: $e'),
           backgroundColor: AppColors.error,
         ));
       }
@@ -261,6 +299,18 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
                         ],
                       ),
                     ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SpotifyExportGuideScreen()));
+                        },
+                        icon: const Icon(Icons.help_outline),
+                        label: const Text('How to get your Spotify data'),
+                      ),
+                    ),
 
                     const SizedBox(height: 32),
                   ],
@@ -355,7 +405,21 @@ class _BringYourMusicScreenState extends ConsumerState<BringYourMusicScreen>
 
               const SizedBox(height: 16),
 
-              if (!provider.configured)
+              if (provider.id == 'spotify')
+                Row(
+                  children: [
+                    Expanded(
+                      child: _actionButton(
+                        label: 'Upload Export (ZIP)',
+                        icon: Icons.upload_file_rounded,
+                        color: accentColor,
+                        loading: isThisConnecting,
+                        onTap: _pickAndUploadSpotifyExport,
+                      ),
+                    ),
+                  ],
+                )
+              else if (!provider.configured)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
